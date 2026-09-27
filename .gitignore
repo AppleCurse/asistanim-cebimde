@@ -1,0 +1,20 @@
+# Bağımlılıklar
+node_modules/
+
+# Gizli bilgiler / yerel ayarlar
+.env
+.env.*
+!.env.example
+*.token
+
+# Çalışma zamanı verileri (asıl konum ~/.asistan, repo içine düşerse de ignore)
+.asistan/
+veri/
+log/
+*.log
+*.pid
+
+# Geçici / işletim sistemi
+.DS_Store
+Thumbs.db
+tmp/

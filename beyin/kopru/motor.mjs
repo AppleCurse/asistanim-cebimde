@@ -1,0 +1,163 @@
+// GÖRÜŞME MOTORU — taşıyıcıdan bağımsız sesli konuşma döngüsü:
+//   ses/metin geldi → (STT) → LLM (görev brifingiyle) → (TTS) → taşıyıcıya gönder
+// Taşıyıcı (tasiyici) arayüzü:
+//   metin(rol, metin, sesGelecek)   transkript satırı
+//   sesCal(buffer, mime)            sunucu tarafı TTS çıktısı
+//   sesDurdur()                     barge-in: çalan sesi kes
+//   durum(nesne)                    "düşünüyor", "konuşuyor" vb.
+//   bitti(gorev, sebep)             görüşme kapandı
+// Aynı motor ileride Twilio/SIP taşıyıcılarıyla da kullanılacak (docs/telefon-gorusmesi.md).
+
+const BITIS_ETIKETI = '[GORUSME_BITTI]';
+
+export class Gorusme {
+  constructor({ llm, gorevler, gorev = null, ayar, tasiyici, log, mod = 'tarayici-ses' }) {
+    this.llm = llm;
+    this.gorevler = gorevler;
+    this.gorev = gorev;
+    this.ayar = ayar;
+    this.tasiyici = tasiyici;
+    this.log = log;
+    this.mod = mod; // tarayici-ses: metin gider, istemci seslendirir | sunucu-ses: 9router STT/TTS
+    this.mesajlar = [];
+    this.transkript = [];
+    this.aktif = false;
+    this.nesil = 0;
+    this.kuyruk = Promise.resolve();
+    this.baslangic = null;
+    this.zamanlayici = null;
+  }
+
+  _sistemMesaji() {
+    if (this.gorev) return this.gorevler.aramaSistemMesaji(this.gorev);
+    const a = this.ayar;
+    return `Sen ${a.kullanici.asistanAdi} adlı kişisel asistansın; ${a.kullanici.ad || 'kullanıcın'} ile SESLİ sohbet ediyorsun.
+Yanıtların sesli okunacak: kısa (1-2 cümle), doğal, Türkçe; madde işareti, emoji veya markdown kullanma.
+Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
+  }
+
+  _kaydet(rol, metin) {
+    const satir = { rol, metin, zaman: new Date().toISOString() };
+    this.transkript.push(satir);
+    if (this.gorev) {
+      this.gorev.transkript = this.transkript;
+      try {
+        this.gorevler.guncelle(this.gorev.id, { transkript: this.transkript });
+      } catch (hata) {
+        this.log?.uyari(`transkript kaydedilemedi: ${hata.message}`);
+      }
+    }
+  }
+
+  async baslat() {
+    if (this.aktif) return;
+    this.aktif = true;
+    this.baslangic = Date.now();
+    if (this.gorev) this.gorevler.guncelle(this.gorev.id, { durum: 'araniyor', mod: this.mod });
+    const sure = (this.ayar.arama?.maksSure || 900) * 1000;
+    this.zamanlayici = setTimeout(() => this.bitir('sure-doldu'), sure);
+
+    const acilis = this.gorev?.acilis;
+    if (acilis) {
+      this.mesajlar.push({ role: 'assistant', content: acilis });
+      await this._soyle(acilis);
+    } else {
+      await this._sira(() => this._yanitUret('(Görüşme başladı. Kısa bir selamla açılış yap.)', { transkripteYazma: true }));
+    }
+  }
+
+  /** Karşı taraf metin olarak konuştu (tarayıcı STT'si veya sunucu STT sonrası). */
+  kullaniciKonustu(metin) {
+    const temiz = (metin || '').trim();
+    if (!temiz || !this.aktif) return Promise.resolve();
+    this.nesil++; // devam eden bir yanıt varsa eskisin
+    this.tasiyici.sesDurdur?.();
+    return this._sira(() => this._yanitUret(temiz));
+  }
+
+  /** Karşı taraftan ham ses geldi → STT → kullaniciKonustu */
+  async sesGeldi(buffer, mime = 'audio/webm') {
+    if (!this.aktif) return;
+    this.tasiyici.durum?.({ asama: 'dinliyor' });
+    let metin = '';
+    try {
+      metin = await this.llm.yaziyaCevir(buffer, { mime, dil: 'tr' });
+    } catch (hata) {
+      this.log?.uyari(`STT hatası: ${hata.message}`);
+      this.tasiyici.durum?.({ asama: 'hata', mesaj: `Ses yazıya çevrilemedi: ${hata.message}` });
+      return;
+    }
+    if (!metin) {
+      this.tasiyici.durum?.({ asama: 'bekliyor', mesaj: 'Anlaşılır bir şey duyulmadı' });
+      return;
+    }
+    await this.kullaniciKonustu(metin);
+  }
+
+  _sira(is) {
+    this.kuyruk = this.kuyruk.then(is).catch((hata) => this.log?.hata(`görüşme adımı: ${hata.message}`));
+    return this.kuyruk;
+  }
+
+  async _yanitUret(kullaniciMetni, { transkripteYazma = false } = {}) {
+    if (!this.aktif) return;
+    const benimNesil = this.nesil;
+    if (!transkripteYazma) {
+      this._kaydet('karsi', kullaniciMetni);
+      this.tasiyici.metin?.('karsi', kullaniciMetni, false);
+    }
+    this.mesajlar.push({ role: 'user', content: kullaniciMetni });
+    this.tasiyici.durum?.({ asama: 'dusunuyor' });
+
+    let icerik;
+    try {
+      const { mesaj } = await this.llm.sohbet([{ role: 'system', content: this._sistemMesaji() }, ...this.mesajlar.slice(-30)], { sicaklik: 0.5, maksToken: 300 });
+      icerik = (mesaj.content || '').trim();
+    } catch (hata) {
+      this.log?.hata(`görüşme LLM hatası: ${hata.message}`);
+      this.tasiyici.durum?.({ asama: 'hata', mesaj: hata.message });
+      icerik = 'Bağlantımda kısa bir sorun oldu, tekrar eder misiniz?';
+    }
+    if (benimNesil !== this.nesil || !this.aktif) return; // kullanıcı araya girdi, bu yanıt bayat
+
+    const bitiyor = icerik.includes(BITIS_ETIKETI);
+    const temiz = icerik.replace(BITIS_ETIKETI, '').trim();
+    this.mesajlar.push({ role: 'assistant', content: icerik });
+    if (temiz) await this._soyle(temiz);
+    if (bitiyor) await this.bitir('asistan-kapatti');
+  }
+
+  async _soyle(metin) {
+    this._kaydet('asistan', metin);
+    const sunucuSesi = this.mod === 'sunucu-ses';
+    this.tasiyici.metin?.('asistan', metin, sunucuSesi);
+    if (!sunucuSesi) return;
+    this.tasiyici.durum?.({ asama: 'konusuyor' });
+    try {
+      const ses = await this.llm.seslendir(metin);
+      await this.tasiyici.sesCal?.(ses, 'audio/mpeg');
+    } catch (hata) {
+      this.log?.uyari(`TTS hatası, metin olarak düşüldü: ${hata.message}`);
+      this.tasiyici.metin?.('sistem', `(TTS yok: ${hata.message}) — istemci seslendirsin`, false);
+      this.tasiyici.metin?.('asistan', metin, false);
+    }
+  }
+
+  async bitir(sebep = 'kullanici-kapatti') {
+    if (!this.aktif) return this.gorev;
+    this.aktif = false;
+    clearTimeout(this.zamanlayici);
+    this.tasiyici.durum?.({ asama: 'kapaniyor', sebep });
+    let sonucGorev = this.gorev;
+    if (this.gorev) {
+      try {
+        sonucGorev = await this.gorevler.ozetle({ ...this.gorev, transkript: this.transkript }, { sebep });
+      } catch (hata) {
+        this.log?.hata(`özet hatası: ${hata.message}`);
+      }
+    }
+    const sure = Math.round((Date.now() - (this.baslangic || Date.now())) / 1000);
+    this.tasiyici.bitti?.(sonucGorev, { sebep, sure, transkript: this.transkript });
+    return sonucGorev;
+  }
+}

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Asistanım Cebimde — Giriş</title>
+  <link rel="stylesheet" href="/statik/stil.css" />
+</head>
+<body>
+  <div class="giris">
+    <div class="kart">
+      <h2>Giriş</h2>
+      <p class="soluk">Erişim anahtarı eski telefondaki <code>~/.asistan/beyin.token</code> dosyasında; <code>scripts/termux/baslat.sh</code> çıktısında da yazar.</p>
+      <form onsubmit="event.preventDefault(); location.href = '/?token=' + encodeURIComponent(document.getElementById('t').value.trim());">
+        <input id="t" placeholder="token" autocomplete="off" autofocus />
+        <p><button class="buton birincil" type="submit">Bağlan</button></p>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

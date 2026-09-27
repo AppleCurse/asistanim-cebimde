@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1216" />
+  <title>Telefon — Asistanım Cebimde</title>
+  <link rel="stylesheet" href="/statik/stil.css" />
+</head>
+<body>
+  <header>
+    <h1><span class="nabiz" id="nabiz"></span> Telefon köprüsü</h1>
+    <nav><a href="/">← Panel</a></nav>
+  </header>
+
+  <main class="telefon">
+    <section class="kart" id="kurulum">
+      <h2>Görüşme</h2>
+      <label class="soluk">Görev</label>
+      <select id="gorev"><option value="">Serbest sesli sohbet (görev yok)</option></select>
+      <label class="soluk" style="display:block;margin-top:8px">Ses yolu</label>
+      <select id="mod">
+        <option value="tarayici-ses">Tarayıcı sesi — bu telefonun tanıma/okuma motoru (ücretsiz, hızlı)</option>
+        <option value="sunucu-ses">Sunucu sesi — 9router STT/TTS (kaliteli ses, sağlayıcı gerekir)</option>
+      </select>
+      <div class="satir" style="display:flex;gap:8px;margin-top:10px">
+        <button class="buton birincil" id="baslat">▶ Görüşmeyi başlat</button>
+        <button class="buton tehlike" id="bitir" disabled>■ Bitir</button>
+      </div>
+      <p class="soluk" id="uyari"></p>
+    </section>
+
+    <section class="kart">
+      <div class="durum-cubugu"><span id="asama">hazır değil</span><span id="sure">00:00</span></div>
+      <div class="transkript" id="transkript"></div>
+    </section>
+
+    <section class="kart">
+      <button class="bas-konus" id="basKonus" disabled>🎙 Basılı tut ve konuş</button>
+      <label class="soluk" style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <input type="checkbox" id="surekli" style="width:auto" /> Sürekli dinle (tarayıcı sesi modunda, eller serbest)
+      </label>
+      <form class="satir" id="metinForm">
+        <input id="metin" placeholder="…ya da yaz" autocomplete="off" />
+        <button class="buton" type="submit">Gönder</button>
+      </form>
+    </section>
+
+    <section class="kart" id="ozetKart" style="display:none">
+      <h2>Sonuç</h2>
+      <div id="ozet"></div>
+    </section>
+  </main>
+
+  <script src="/statik/telefon.js"></script>
+</body>
+</html>

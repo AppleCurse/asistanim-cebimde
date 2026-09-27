@@ -1,0 +1,20 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Servisleri durdurur (önce döngüyü, sonra süreci — böylece yeniden doğmaz).
+#   bash scripts/termux/durdur.sh            # hepsi
+#   bash scripts/termux/durdur.sh beyin      # sadece beyin
+set -u
+export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
+RUN="$ASISTAN_HOME/run"
+LISTE=("$@")
+[[ ${#LISTE[@]} -eq 0 ]] && LISTE=(9remote beyin beden 9router)
+for ad in "${LISTE[@]}"; do
+  if [[ -f "$RUN/$ad.pid" ]]; then
+    kill "$(cat "$RUN/$ad.pid")" 2>/dev/null && echo "  $ad döngüsü durduruldu"
+  fi
+  if [[ -f "$RUN/$ad.child.pid" ]]; then
+    kill "$(cat "$RUN/$ad.child.pid")" 2>/dev/null && echo "  $ad süreci durduruldu"
+  fi
+  rm -f "$RUN/$ad.pid" "$RUN/$ad.child.pid"
+done
+[[ $# -eq 0 ]] && termux-wake-unlock 2>/dev/null
+echo "bitti"
