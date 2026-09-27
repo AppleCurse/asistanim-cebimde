@@ -1,0 +1,36 @@
+# Bir sürüm yayınlanınca (gh release create vX.Y.Z) testleri koşar, paketi üretir ve release'e ekler:
+#   indir-kur.sh, asistanim-cebimde-vX.Y.Z.zip, asistanim-cebimde-vX.Y.Z.tar.gz, asistanim-cebimde.tar.gz
+# Böylece https://github.com/AppleCurse/asistanim-cebimde/releases/latest/download/indir-kur.sh her zaman günceldir.
+name: Sürüm paketi
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      etiket:
+        description: "Sürüm etiketi (örn. v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  paketle:
+    runs-on: ubuntu-latest
+    env:
+      ETIKET: ${{ github.event.release.tag_name || inputs.etiket }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.etiket }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm test
+      - run: bash scripts/dev/paketle.sh cikti
+      - name: Release'e yükle
+        run: gh release upload "$ETIKET" cikti/* --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

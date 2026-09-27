@@ -30,9 +30,16 @@ if [[ -n "${ASISTAN_DAL:-}" ]]; then
   fi
 else
   GECICI="$(mktemp -d)"
-  curl -fL --retry 3 -o "$GECICI/paket.tar.gz" "$PAKET_URL"
+  if ! curl -fsSL --retry 3 -o "$GECICI/paket.tar.gz" "$PAKET_URL"; then
+    # Paket dosyası (henüz) yoksa: son sürümün etiketini bul, GitHub'ın kaynak arşivini kullan
+    ETIKET="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$DEPO/releases/latest" | sed 's#.*/tag/##')"
+    [[ -n "$ETIKET" && "$ETIKET" != *"/"* ]] || ETIKET="main"
+    echo "  paket bulunamadı, kaynak arşivi indiriliyor: $ETIKET"
+    curl -fL --retry 3 -o "$GECICI/paket.tar.gz" "https://github.com/$DEPO/archive/refs/tags/$ETIKET.tar.gz" \
+      || curl -fL --retry 3 -o "$GECICI/paket.tar.gz" "https://github.com/$DEPO/archive/refs/heads/$ETIKET.tar.gz"
+  fi
   mkdir -p "$HEDEF"
-  # Paket üst dizini 'asistanim-cebimde/' → hedefe aç (mevcut .env ve ayarlar korunur: ~/.asistan dokunulmaz)
+  # Arşivin üst dizini atlanarak hedefe açılır (mevcut .env ve ~/.asistan dokunulmaz)
   tar -xzf "$GECICI/paket.tar.gz" -C "$HEDEF" --strip-components=1
   rm -rf "$GECICI"
 fi
