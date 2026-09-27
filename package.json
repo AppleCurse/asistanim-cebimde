@@ -1,0 +1,20 @@
+{
+  "name": "asistanim-cebimde",
+  "version": "0.1.0",
+  "description": "Eski bir Android telefonu 7/24 yaşayan; gören, duyan, konuşan ve arayan kişisel asistana dönüştüren proje.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "beden": "node beden/server.mjs",
+    "beyin": "node beyin/index.mjs",
+    "sohbet": "node beyin/cli.mjs",
+    "modeller": "node beyin/cli.mjs --modeller",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

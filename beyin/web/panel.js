@@ -1,0 +1,209 @@
+// Panel — cebindeki telefondan asistanı yönetme ekranı.
+const $ = (s) => document.querySelector(s);
+
+async function api(yol, govde) {
+  const y = await fetch('/api' + yol, {
+    method: govde ? 'POST' : 'GET',
+    headers: govde ? { 'Content-Type': 'application/json' } : {},
+    body: govde ? JSON.stringify(govde) : undefined,
+  });
+  const veri = await y.json().catch(() => ({}));
+  if (!y.ok) throw new Error(veri.hata || y.statusText);
+  return veri;
+}
+
+function balon(sinif, metin, resim) {
+  const d = document.createElement('div');
+  d.className = 'balon ' + sinif;
+  d.textContent = metin;
+  if (resim) {
+    const img = document.createElement('img');
+    img.src = resim;
+    d.appendChild(img);
+  }
+  $('#sohbet').appendChild(d);
+  $('#sohbet').scrollTop = $('#sohbet').scrollHeight;
+  return d;
+}
+
+function adimNotu(adimlar) {
+  if (!adimlar?.length) return;
+  const d = document.createElement('div');
+  d.className = 'adim';
+  d.textContent = '⚙ ' + adimlar.map((a) => a.arac).join(' → ');
+  $('#sohbet').appendChild(d);
+}
+
+async function durumYukle() {
+  try {
+    const d = await api('/durum');
+    $('#asistanAdi').textContent = d.asistan + (d.kullanici ? ` · ${d.kullanici}` : '');
+    const yasiyor = d.beden?.durum === 'yasiyor';
+    $('#nabiz').className = 'nabiz' + (yasiyor ? ' yasiyor' : '');
+    const pil = yasiyor ? await api('/pil', {}).catch(() => null) : null;
+    const rozet = (b, s) => `<div class="rozet"><b>${b}</b><span>${s}</span></div>`;
+    $('#durum').innerHTML =
+      rozet('Beden', yasiyor ? `yaşıyor (${d.beden.mod})` : '<span class="hata">ulaşılamıyor</span>') +
+      rozet('Pil', pil ? `%${pil.percentage} ${pil.status === 'CHARGING' ? '⚡' : ''} ${pil.temperature ? pil.temperature + '°C' : ''}` : '—') +
+      rozet('LLM', d.llm.model) +
+      rozet('Kulak / Ağız', `${d.llm.stt} / ${d.llm.tts}`) +
+      rozet('Çalışma', `${Math.floor(d.calismaSuresi / 3600)}s ${Math.floor((d.calismaSuresi % 3600) / 60)}dk`) +
+      rozet('Bellek', `${d.bellek.rssMB} MB / boş ${d.bellek.bosMB} MB`);
+    $('#agBilgi').textContent = 'Ağ: ' + (d.ag || []).map((a) => `${a.ip} (${a.arayuz})`).join(', ');
+  } catch (h) {
+    $('#durum').innerHTML = `<div class="rozet hata">${h.message}</div>`;
+  }
+}
+
+async function gorevleriYukle() {
+  const { gorevler } = await api('/gorevler');
+  if (!gorevler.length) {
+    $('#gorevler').innerHTML = '<p class="soluk">Henüz görev yok.</p>';
+    return;
+  }
+  $('#gorevler').innerHTML = gorevler
+    .map((g) => {
+      const liste = (d) => (Array.isArray(d) && d.length ? `<ul>${d.map((x) => `<li>${x}</li>`).join('')}</ul>` : '');
+      const eksik = g.eksik_bilgi?.length ? `<p class="hata">Eksik bilgi: ${g.eksik_bilgi.join(', ')}</p>` : '';
+      const sonuc = g.sonuc ? `<p><b>Sonuç:</b> ${g.sonuc.basarili ? '✅' : '❌'} ${g.sonuc.ozet || ''}</p>${liste(g.sonuc.takip)}` : '';
+      const aktif = ['hazir', 'taslak', 'araniyor'].includes(g.durum);
+      return `<div class="gorev" data-id="${g.id}">
+        <div class="ust"><strong>${g.baslik || g.talimat}</strong><span class="durum ${g.durum}">${g.durum}</span></div>
+        <div class="soluk">${g.kisi?.ad || '?'} · ${g.kisi?.numara || 'numara yok'} · ${g.amac || ''}</div>
+        ${liste(g.konusma_noktalari)}${eksik}${sonuc}
+        <div class="eylemler">
+          ${aktif ? `<a class="buton birincil" href="/telefon?gorev=${g.id}">📞 Tarayıcıdan görüş</a>` : ''}
+          ${aktif && g.kisi?.numara ? `<button class="buton" data-eylem="hucresel">📱 Hattan çevir</button>` : ''}
+          ${aktif ? `<button class="buton tehlike" data-eylem="iptal">İptal</button>` : ''}
+        </div>
+      </div>`;
+    })
+    .join('');
+}
+
+$('#sohbetForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const metin = $('#mesaj').value.trim();
+  if (!metin) return;
+  $('#mesaj').value = '';
+  balon('sen', metin);
+  $('#gonder').disabled = true;
+  const bekle = balon('sistem', 'düşünüyor…');
+  try {
+    const y = await api('/sohbet', { oturum: 'panel', metin });
+    bekle.remove();
+    adimNotu(y.adimlar);
+    balon('asistan', y.metin || '(boş yanıt)');
+    if (y.adimlar?.some((a) => a.arac === 'gorev_olustur')) gorevleriYukle();
+    if (y.adimlar?.some((a) => a.arac === 'hatirla')) hafizaYukle();
+  } catch (h) {
+    bekle.textContent = 'Hata: ' + h.message;
+    bekle.classList.add('hata');
+  } finally {
+    $('#gonder').disabled = false;
+  }
+});
+
+$('#bak').addEventListener('click', async () => {
+  const bekle = balon('sistem', 'kameraya bakıyor…');
+  try {
+    const f = await api('/bak', { kamera: 0 });
+    bekle.remove();
+    balon('asistan', 'Şu an gördüğüm:', `data:${f.mime};base64,${f.base64}`);
+  } catch (h) {
+    bekle.textContent = 'Hata: ' + h.message;
+  }
+});
+
+$('#soyle').addEventListener('click', async () => {
+  const metin = prompt('Telefonun hoparlöründen ne söylensin?');
+  if (!metin) return;
+  try {
+    await api('/soyle', { metin });
+    balon('sistem', `🔊 "${metin}" söylendi`);
+  } catch (h) {
+    balon('sistem', 'Hata: ' + h.message);
+  }
+});
+
+$('#sifirla').addEventListener('click', async () => {
+  await api('/sohbet/sifirla', { oturum: 'panel' });
+  $('#sohbet').innerHTML = '';
+  balon('sistem', 'sohbet sıfırlandı');
+});
+
+$('#gorevForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const talimat = $('#talimat').value.trim();
+  if (!talimat) return;
+  const numara = $('#numara').value.trim();
+  const dugme = e.target.querySelector('button');
+  dugme.disabled = true;
+  dugme.textContent = 'Planlanıyor…';
+  try {
+    await api('/gorevler', { talimat, numara: numara || undefined });
+    $('#talimat').value = '';
+    $('#numara').value = '';
+    await gorevleriYukle();
+  } catch (h) {
+    alert('Hata: ' + h.message);
+  } finally {
+    dugme.disabled = false;
+    dugme.textContent = 'Planla';
+  }
+});
+
+$('#gorevler').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-eylem]');
+  if (!b) return;
+  const id = b.closest('.gorev').dataset.id;
+  try {
+    if (b.dataset.eylem === 'iptal') await api(`/gorevler/${id}`, { durum: 'iptal' });
+    if (b.dataset.eylem === 'hucresel') {
+      if (!confirm('Eski telefonun hattından bu numara çevrilecek. Bu modda asistan konuşamaz; brifing burada gösterilir. Devam?')) return;
+      const s = await api(`/gorevler/${id}/hucresel-ara`, {});
+      alert(`Çevriliyor: ${s.arandi}\n\nAçılış: ${s.brifing.acilis || ''}\n\nNoktalar:\n- ${(s.brifing.konusma_noktalari || []).join('\n- ')}`);
+    }
+    await gorevleriYukle();
+  } catch (h) {
+    alert('Hata: ' + h.message);
+  }
+});
+
+async function hafizaYukle() {
+  try {
+    const { icerik } = await api('/hafiza');
+    $('#hafiza').textContent = icerik || '(boş)';
+  } catch (h) {
+    $('#hafiza').textContent = h.message;
+  }
+}
+
+$('#yenile').addEventListener('click', (e) => {
+  e.preventDefault();
+  durumYukle();
+  gorevleriYukle();
+  hafizaYukle();
+});
+
+// PWA: servis çalışanı + "Uygulama olarak kur" düğmesi
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+let kurulumIstemi = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  kurulumIstemi = e;
+  $('#kur').style.display = '';
+});
+$('#kur').addEventListener('click', async () => {
+  if (!kurulumIstemi) return;
+  kurulumIstemi.prompt();
+  await kurulumIstemi.userChoice.catch(() => {});
+  kurulumIstemi = null;
+  $('#kur').style.display = 'none';
+});
+window.addEventListener('appinstalled', () => balon('sistem', 'Uygulama ana ekrana kuruldu ✓'));
+
+durumYukle();
+gorevleriYukle();
+hafizaYukle();
+setInterval(durumYukle, 60_000);
