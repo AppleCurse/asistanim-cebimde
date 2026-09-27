@@ -323,4 +323,5 @@ $('#metinForm').addEventListener('submit', (e) => {
   gonder({ tip: 'metin', metin: m });
 });
 
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 gorevleriDoldur();

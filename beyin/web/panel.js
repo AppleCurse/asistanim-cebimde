@@ -186,6 +186,23 @@ $('#yenile').addEventListener('click', (e) => {
   hafizaYukle();
 });
 
+// PWA: servis çalışanı + "Uygulama olarak kur" düğmesi
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+let kurulumIstemi = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  kurulumIstemi = e;
+  $('#kur').style.display = '';
+});
+$('#kur').addEventListener('click', async () => {
+  if (!kurulumIstemi) return;
+  kurulumIstemi.prompt();
+  await kurulumIstemi.userChoice.catch(() => {});
+  kurulumIstemi = null;
+  $('#kur').style.display = 'none';
+});
+window.addEventListener('appinstalled', () => balon('sistem', 'Uygulama ana ekrana kuruldu ✓'));
+
 durumYukle();
 gorevleriYukle();
 hafizaYukle();

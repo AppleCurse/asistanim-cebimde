@@ -10,6 +10,7 @@
 - [x] Termux scriptleri: kur, baslat/durdur/durum, servis döngüsü, Termux:Boot, TLS
 - [x] proot Ubuntu + 9remote kurulumu
 - [x] 22 test (sahte 9router ile uçtan uca)
+- [x] İndirilebilir sürüm: GitHub release (zip/tar.gz) + tek satır `indir-kur.sh` + `scripts/dev/paketle.sh`
 
 ## Faz 1 — Telefonda canlandırma
 - [ ] Redmi Note 8'de gerçek kurulum; `termux-camera-photo` süre/çözünürlük, `termux-microphone-record` format doğrulaması
@@ -41,7 +42,8 @@
 - [ ] Günlük özet (aramalar, SMS, pil, olaylar) sabah bildirimi
 - [ ] Bellek konsolidasyonu: `hafiza.md`'yi LLM ile periyodik sadeleştirme
 - [ ] Çoklu kullanıcı/aile profili ve kişi bazlı üslup
-- [ ] Panel PWA manifest + push bildirimleri (`web-push`)
+- [x] Panel PWA manifest + servis çalışanı (ana ekrana kurulum)
+- [ ] Push bildirimleri (`web-push`)
 - [ ] Yerel küçük model (llama.cpp, arm64) ile çevrimdışı asgari yanıt (isteğe bağlı)
 
 ## Açık sorular

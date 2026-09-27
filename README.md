@@ -40,13 +40,33 @@
 
 Ayrıntılar: [docs/mimari.md](docs/mimari.md) · Telefon görüşmesi tasarımı ve dürüst sınırlar: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md)
 
-## Hızlı başlangıç (eski telefonda, Termux içinde)
+## İndir ve kur (eski telefonda, Termux içinde)
+
+**Yol 1 — Tek satır (önerilen):** Termux'a yapıştır, gerisini o halleder:
+
+```bash
+curl -fsSL https://github.com/AppleCurse/asistanim-cebimde/releases/latest/download/indir-kur.sh | bash -s -- --tls
+```
+(`--proot` eklersen Ubuntu + 9remote de kurulur.)
+
+**Yol 2 — Zip indir:** [Sürümler sayfasından](https://github.com/AppleCurse/asistanim-cebimde/releases/latest) `asistanim-cebimde-vX.Y.Z.zip` dosyasını eski telefonun tarayıcısıyla indir (Downloads'a iner), sonra Termux'ta:
+
+```bash
+termux-setup-storage                 # bir kez; Downloads'a erişim izni
+pkg install -y unzip
+unzip -o ~/storage/downloads/asistanim-cebimde-v*.zip -d ~/
+bash ~/asistanim-cebimde/scripts/termux/kur.sh --tls
+```
+
+**Yol 3 — Git (geliştirme):**
 
 ```bash
 pkg install -y git
 git clone https://github.com/AppleCurse/asistanim-cebimde ~/asistanim-cebimde
-bash ~/asistanim-cebimde/scripts/termux/kur.sh --tls        # --proot eklersen Ubuntu + 9remote da kurulur
+bash ~/asistanim-cebimde/scripts/termux/kur.sh --tls
 ```
+
+**Cebindeki telefona "uygulama" olarak:** Panel bir PWA'dır. Panel açıkken üstteki **⬇ Kur** düğmesine (Chrome) ya da tarayıcı menüsünden **Ana ekrana ekle**'ye bas → ikonlu, tam ekran uygulama gibi açılır. (HTTPS'te otomatik kurulum istemi çıkar; HTTP'de "Ana ekrana ekle" kısayol olarak çalışır.)
 
 Sonra:
 
@@ -75,10 +95,10 @@ beden/                 Termux cihaz köprüsü: server.mjs (HTTP API), termux-ap
 beyin/                 index.mjs (HTTP+WS sunucu), asistan.mjs (ajan döngüsü), araclar.mjs (araçlar),
                        gorev.mjs (görüşme görevleri), llm.mjs (9router istemcisi), hafiza.mjs, cli.mjs
 beyin/kopru/           motor.mjs (görüşme motoru), tarayici.mjs (WebSocket yazılım telefonu)
-beyin/web/             panel (index.html/panel.js) + yazılım telefonu (telefon.html/telefon.js)
-scripts/termux/        kur.sh, baslat.sh, durdur.sh, durum.sh, servis.sh, boot-kur.sh, tls-uret.sh
+beyin/web/             panel (index.html/panel.js) + yazılım telefonu (telefon.html/telefon.js) + PWA (manifest, sw.js, ikonlar)
+scripts/termux/        indir-kur.sh (tek satır kurulum), kur.sh, baslat.sh, durdur.sh, durum.sh, servis.sh, boot-kur.sh, tls-uret.sh
 scripts/proot/         ubuntu-kur.sh, icerde-kur.sh, 9remote.sh
-scripts/dev/           sahte-ortam.mjs
+scripts/dev/           sahte-ortam.mjs, paketle.sh (zip/tar.gz sürüm paketi)
 test/                  node:test — sahte 9router ile uçtan uca
 docs/                  mimari, kurulum, telefon görüşmesi, yol haritası, donanım notları
 ```

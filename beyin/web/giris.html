@@ -4,11 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Asistanım Cebimde — Giriş</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="/statik/ikon-192.png" />
   <link rel="stylesheet" href="/statik/stil.css" />
 </head>
 <body>
   <div class="giris">
     <div class="kart">
+      <p style="text-align:center"><img src="/statik/ikon-192.png" alt="" width="96" height="96" style="border-radius:22px" /></p>
       <h2>Giriş</h2>
       <p class="soluk">Erişim anahtarı eski telefondaki <code>~/.asistan/beyin.token</code> dosyasında; <code>scripts/termux/baslat.sh</code> çıktısında da yazar.</p>
       <form onsubmit="event.preventDefault(); location.href = '/?token=' + encodeURIComponent(document.getElementById('t').value.trim());">

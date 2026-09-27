@@ -13,13 +13,16 @@ Hedef cihaz: Xiaomi Redmi Note 8 (Android 9–11 / MIUI 12.x, root yok). Diğer 
 
 ## 1. Termux kurulumu
 
-Termux'ta:
+Termux'ta tek satır (sürüm paketini indirir ve `kur.sh`'ı çalıştırır):
 
 ```bash
-pkg install -y git
-git clone https://github.com/AppleCurse/asistanim-cebimde ~/asistanim-cebimde
-bash ~/asistanim-cebimde/scripts/termux/kur.sh --tls
+curl -fsSL https://github.com/AppleCurse/asistanim-cebimde/releases/latest/download/indir-kur.sh | bash -s -- --tls
 ```
+
+Zip ile: sürümler sayfasından `.zip`'i indir → `termux-setup-storage` → `unzip -o ~/storage/downloads/asistanim-cebimde-v*.zip -d ~/` → `bash ~/asistanim-cebimde/scripts/termux/kur.sh --tls`.
+Git ile (geliştirme): `pkg install -y git && git clone https://github.com/AppleCurse/asistanim-cebimde ~/asistanim-cebimde && bash ~/asistanim-cebimde/scripts/termux/kur.sh --tls`
+
+Güncelleme: aynı tek satırı tekrar çalıştır (`~/.asistan` ve `.env` korunur).
 
 `kur.sh` şunları yapar: `pkg` güncelleme; `nodejs-lts termux-api openssh ffmpeg jq zbar openssl-tool util-linux` kurulumu; `npm install`; `npm i -g 9router`; `~/.asistan` + tokenlar; `.env` kopyası; `--tls` ile HTTPS sertifikası; `--proot` ile Ubuntu + 9remote.
 
@@ -63,7 +66,7 @@ Model listesi: `npm run modeller`
 bash ~/asistanim-cebimde/scripts/termux/baslat.sh
 ```
 
-Çıktıda `Panel: https://192.168.x.y:20131/?token=...` satırını cebindeki telefonda aç (aynı Wi-Fi). Tarayıcı "güvenli değil" derse (kendinden imzalı sertifika) **Gelişmiş → Devam et** — bir kez. Sonra **Ana ekrana ekle**: PWA gibi açılır.
+Çıktıda `Panel: https://192.168.x.y:20131/?token=...` satırını cebindeki telefonda aç (aynı Wi-Fi). Tarayıcı "güvenli değil" derse (kendinden imzalı sertifika) **Gelişmiş → Devam et** — bir kez. Sonra üstteki **⬇ Kur** düğmesi ya da menüden **Ana ekrana ekle**: panel ikonlu, tam ekran bir uygulama olarak kurulur (PWA); 📞 Telefon kısayolu da gelir.
 
 Terminalden deneme: `npm run sohbet` → `pil kaç?`, `etrafa bak`, `"test" de`.
 

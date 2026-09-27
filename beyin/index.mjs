@@ -184,6 +184,7 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
         return statik(res, sayfa, ek);
       }
       if (url.pathname.startsWith('/statik/')) return statik(res, url.pathname.slice('/statik/'.length));
+      if (url.pathname === '/sw.js' || url.pathname === '/manifest.webmanifest') return statik(res, url.pathname.slice(1)); // PWA: kök kapsam
 
       if (url.pathname.startsWith('/api/')) {
         if (!yetkili) return jsonYanit(res, 401, { hata: 'yetkisiz — ?token=... veya Authorization: Bearer' });
