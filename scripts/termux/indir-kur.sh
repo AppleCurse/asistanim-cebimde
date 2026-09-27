@@ -6,7 +6,9 @@
 # Seçenekler (bash -s -- ile):   ... | bash -s -- --tls --proot
 #   --tls    panel için HTTPS sertifikası (tarayıcıda mikrofon için gerekir)
 #   --proot  Ubuntu + 9remote de kurulsun
-# Ortam:  ASISTAN_DAL=main  → sürüm paketi yerine git'ten o dalı çeker (geliştirme)
+#   --sadece-indir  indir/aç ama kur.sh'ı çalıştırma
+# Ortam:  ASISTAN_DAL=main          → sürüm paketi yerine git'ten o dalı çeker (geliştirme)
+#         ASISTAN_PAKET_URL=...     → paketi başka bir adresten al (örn. yerel ağdaki bir dosya sunucusu)
 set -eu
 
 if [[ "${PREFIX:-}" != *com.termux* ]]; then
@@ -16,7 +18,11 @@ fi
 
 DEPO="AppleCurse/asistanim-cebimde"
 HEDEF="${ASISTAN_DIZIN:-$HOME/asistanim-cebimde}"
-PAKET_URL="https://github.com/$DEPO/releases/latest/download/asistanim-cebimde.tar.gz"
+PAKET_URL="${ASISTAN_PAKET_URL:-https://github.com/$DEPO/releases/latest/download/asistanim-cebimde.tar.gz}"
+SADECE_INDIR=0; KUR_ARGS=()
+for a in "$@"; do
+  if [[ "$a" == "--sadece-indir" ]]; then SADECE_INDIR=1; else KUR_ARGS+=("$a"); fi
+done
 
 printf '\n\033[1;32m▶ Asistanım Cebimde indiriliyor\033[0m\n'
 pkg install -y curl tar >/dev/null 2>&1 || pkg install -y curl tar
@@ -45,4 +51,8 @@ else
 fi
 
 echo "  → $HEDEF"
-exec bash "$HEDEF/scripts/termux/kur.sh" "$@"
+if [[ $SADECE_INDIR -eq 1 ]]; then
+  echo "İndirildi. Kurmak için: bash $HEDEF/scripts/termux/kur.sh --tls"
+  exit 0
+fi
+exec bash "$HEDEF/scripts/termux/kur.sh" "${KUR_ARGS[@]+"${KUR_ARGS[@]}"}"
