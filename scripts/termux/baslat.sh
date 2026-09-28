@@ -29,8 +29,8 @@ termux-wake-lock 2>/dev/null || echo "  (termux-wake-lock yok — Termux:API kur
 
 echo "▶ Servisler"
 command -v sshd >/dev/null && { pgrep -x sshd >/dev/null || sshd; echo "  sshd (port 8022)"; }
-if command -v 9router >/dev/null; then
-  baslat 9router 9router
+if [[ -f "$REPO_DIR/scripts/termux/9router-servis.sh" ]] && command -v 9router >/dev/null; then
+  baslat 9router bash "$REPO_DIR/scripts/termux/9router-servis.sh"
 else
   echo "  9router bulunamadı (npm i -g 9router) — proot içinde çalıştırıyorsan LLM_BASE_URL yine localhost:20128 olur"
 fi

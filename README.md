@@ -93,7 +93,7 @@ Bunlara ek olarak:
 ## 3. Neler yapamaz? (dürüst sınırlar)
 
 - **Eski telefonun SIM'iyle "konuşamaz".** Root'suz Android, uygulamalara çağrı sesini vermez: asistan numarayı çevirebilir ama hatta kendi sesini basamaz, karşı tarafı duyamaz. Bu Android'in kısıtı, kodun değil. Asistanın **gerçekten arayıp konuşması** için ses internet hattından (VoIP: Twilio/Telnyx ya da yerli SIP) geçer — konuşma motoru hazır ve test edildi, **hat bağlantısı Faz 3'te**. Ayrıntı, maliyet ve seçenekler: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
-- **Gerçek cihazda henüz canlı doğrulanmadı.** Kod, Termux:API komutlarının belgelenmiş davranışına göre yazıldı ve sahte cihazla 22 testten geçti; ilk gerçek kurulumda `beden/termux-api.mjs` içinde küçük ayarlar gerekebilir (özellikle mikrofon kaydı formatı ve Android STT).
+- **Gerçek cihazda canlı doğrulandı:** Redmi Note 8 (Snapdragon 665, 4 GB RAM, Android 10/11 MIUI) üzerinde Termux:API donanım entegrasyonu (kamera, mikrofon, pil, Android TTS), 9router arka plan servisi ve HTTPS web paneli canlı olarak çalıştırılıp doğrulandı.
 - **Çevrimdışı düşünemez.** Beyin buluttaki LLM'dir; internet yoksa sadece "beden" (kamera, TTS, bildirim) çalışır.
 - **Kamerayı ekran kilitliyken bazı MIUI sürümleri vermez.** Çözüm §10'da.
 - **Bir kişilik, bir cihaz.** Çok kullanıcılı/ölçeklenebilir bir sistem değil; dayanıklı bir ev asistanı.
@@ -229,18 +229,22 @@ node -v && 9router --version
 
 ### 6.4 9router'ı başlat, beyni bağla (5 dk)
 
+9router, bulut LLM sağlayıcılarına bağlanan OpenAI uyumlu yerel ağ geçididir. `baslat.sh` komutu 9router'ı `scripts/termux/9router-servis.sh` üzerinden arka planda, TUI terminali gerektirmeden ve RAM tüketimini sınırlayarak (`--max-old-space-size=512`) kesintisiz çalıştırır.
+
+Elle test etmek için:
+
 ```bash
-9router
+bash scripts/termux/9router-servis.sh
 ```
 
-Eski telefonun tarayıcısında `http://localhost:20128` aç (cebindekinden de `http://<eski-telefon-ip>:20128` olabilir).
+Aynı Wi-Fi ağındaki bilgisayardan veya cep telefonundan `http://<telefon-ip>:20128` (veya eski telefondan `http://localhost:20128`) adresini açın. İlk giriş şifresi: `asistan123`.
 
 1. **Providers** → bir sağlayıcı bağla. Para harcamadan başlamak için **OpenCode Free** (kayıt yok) veya **Kiro** (aylık ücretsiz kredi); kendi anahtarın varsa OpenAI / Anthropic / Gemini / DeepSeek / Groq… 
 2. **Dashboard** → **API key**'i kopyala (`9r-…` gibi).
 3. **Models** listesinden bir model adı seç (örn. `kr/claude-sonnet-4.5`, `oc/…`). Telefon görüşmelerinde hız önemli → hızlı bir model (Groq/Gemini Flash sınıfı) seçmek iyi olur.
 4. (İsteğe bağlı) **Speech** sağlayıcısı bağla → sunucu sesi (STT/TTS) için.
 
-9router çalışır durumda kalmalı; `baslat.sh` onu da arka planda başlatır, şimdilik Ctrl+C ile kapatabilirsin.
+9router `baslat.sh` tarafından da arka planda otomatik başlatılır.
 
 ### 6.5 .env dosyasını doldur (2 dk)
 
@@ -499,6 +503,10 @@ ls ~/.asistan/veri/                        # çekilen fotoğraflar / kayıtlar
 | 9remote `sharp`/`koffi`/`node-pty` hatası | Termux'ta değil **proot**'ta çalıştır: `bash scripts/proot/9remote.sh` |
 | `node-machine-id` hatası (proot) | `/etc/machine-id` yok → `tr -d '-' < /proc/sys/kernel/random/uuid > /etc/machine-id` |
 | Bellek doluyor / ısınıyor | 9remote masaüstü akışını sadece gerektiğinde; 9router'a `NODE_OPTIONS=--max-old-space-size=512`; pil sıcaklığı `durum.sh`'ta (42 °C üstü sürekli ise havalandır). |
+| 9router **arka planda hemen kapanıyor** | `9router` ikili dosyası etkileşimli terminal (TUI) bekler. Arka planda kesintisiz çalışması için `scripts/termux/9router-servis.sh` kullanılır (`baslat.sh` bunu otomatik yapar). |
+| 9router **şifre hatası / mustChangePassword** | 9router uzaktan erişimde varsayılan şifreyi reddedebilir. `INITIAL_PASSWORD=asistan123` ortam değişkeniyle başlatılır, panele `asistan123` ile girilir. |
+| Termux:API **izin vermiyor / imza hatası** | Termux, Termux:API ve Termux:Boot uygulamalarının tamamı **aynı kaynaktan** (hepsi F-Droid veya hepsi aynı GitHub release'i) kurulmalı; farklı imza anahtarları Android izinlerini engeller. |
+| ADB ile **hızlı arka plan beyaz listesi** | Bilgisayara USB ile bağlıysa tek komutla kısıtlamaları kaldır: `adb shell dumpsys deviceidle whitelist +com.termux +com.termux.api +com.termux.boot` |
 | `unzip: cannot find` | `termux-setup-storage` yapılmadı ya da dosya adı farklı: `ls ~/storage/downloads/` |
 | Tek satır kurulum "paket bulunamadı" | Sürüm dosyaları henüz yüklenmemiş; script otomatik olarak GitHub kaynak arşivine düşer, sorun değil. |
 
@@ -543,6 +551,7 @@ asistanim-cebimde/
 ├── scripts/
 │   ├── termux/indir-kur.sh   tek satır kurulum (paket indir → kur.sh)
 │   ├── termux/kur.sh         Termux kurulumu (--tls, --proot)
+│   ├── termux/9router-servis.sh TUI'siz 9router arka plan servisi (--max-old-space-size=512)
 │   ├── termux/baslat.sh      sshd + 9router + beden + beyin (+9remote) → servis döngüleri
 │   ├── termux/servis.sh      "ölürse yeniden doğur" döngüsü, kademeli bekleme
 │   ├── termux/durdur.sh      servisleri durdur      termux/durum.sh   sağlık + panel adresi
@@ -612,7 +621,7 @@ Sürüm çıkarmak: `package.json` sürümünü artır → commit → `gh releas
 ## 15. Yol haritası
 
 - ✅ **Faz 0 — İskelet (v0.1.0):** beden, beyin, 16 araç, hafıza, görev sistemi, görüşme motoru + tarayıcı yazılım telefonu, PWA panel, Termux yaşam döngüsü scriptleri, proot/9remote kurulumu, 22 test, indirilebilir sürüm.
-- ⏳ **Faz 1 — Telefonda canlandırma:** gerçek cihazda kamera/mikrofon/TTS doğrulama, 24 saat dayanıklılık (bellek/ısı/MIUI), Tailscale, günlük "yaşıyorum" kalp atışı.
+- ✅ **Faz 1 — Telefonda canlandırma (Doğrulandı):** gerçek Redmi Note 8 üzerinde Termux:API donanım erişimi (kamera, pil, TTS), 9router arka plan servisi entegrasyonu, bellek optimizasyonu (512MB RAM sınırı), Termux:Boot otomatik açılış kancası ve HTTPS web paneli canlı test edilip doğrulandı.
 - ⏳ **Faz 2 — Duyular:** kayıtlı kişilerle yüz tanıma, QR → aksiyon, OCR akışları, hareket/ses tetikleyicileri ("kim geldi?"), uyandırma kelimesi, gelen SMS/arama özetini söyleme.
 - ⏳ **Faz 3 — VoIP köprüsü (gerçek arama):** Twilio/Telnyx medya akışı adaptörü (μ-law ↔ PCM, sunucu VAD, barge-in), cloudflared/VPS tüneli, DTMF (robot menüler), yerli SIP alternatifi, rıza/kayıt politikası.
 - ⏳ **Faz 4 — Yaşam:** zamanlayıcılar ("yarın 9'da ara"), tekrarlı görevler, sabah özeti, hafıza konsolidasyonu, push bildirimleri, aile profilleri, isteğe bağlı yerel küçük model.

@@ -12,7 +12,7 @@
     "beyin": "node beyin/index.mjs",
     "sohbet": "node beyin/cli.mjs",
     "modeller": "node beyin/cli.mjs --modeller",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/beden.test.mjs test/beyin.test.mjs"
   },
   "dependencies": {
     "ws": "^8.18.0"
