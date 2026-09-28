@@ -8,7 +8,7 @@ export PATH="$PREFIX/bin:$PATH"
 
 export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
 RUN="$ASISTAN_HOME/run"
-REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+REPO_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/../.." && pwd)"
 [[ -f "$REPO_DIR/.env" ]] && { set -a; # shellcheck disable=SC1091
   source "$REPO_DIR/.env"; set +a; }
 
