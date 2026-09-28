@@ -1,6 +1,11 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Kim yaşıyor, kim ölü? Panel adresini ve tokenı da gösterir.
 set -u
+export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+export HOME="${TERMUX_HOME:-/data/data/com.termux/files/home}"
+export PATH="$PREFIX/bin:$PATH"
+[[ -f "$PREFIX/lib/libtermux-exec.so" ]] && export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"
+
 export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
 RUN="$ASISTAN_HOME/run"
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"

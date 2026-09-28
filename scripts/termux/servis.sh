@@ -3,6 +3,11 @@
 #   servis.sh <ad> <komut...>
 # PID'ler: $ASISTAN_HOME/run/<ad>.pid (bu döngü) ve <ad>.child.pid (asıl süreç)
 set -u
+export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+export HOME="${TERMUX_HOME:-/data/data/com.termux/files/home}"
+export PATH="$PREFIX/bin:$PATH"
+[[ -f "$PREFIX/lib/libtermux-exec.so" ]] && export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"
+
 AD="$1"; shift
 ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
 RUN="$ASISTAN_HOME/run"; LOG="$ASISTAN_HOME/log"

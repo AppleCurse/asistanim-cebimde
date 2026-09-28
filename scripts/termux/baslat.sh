@@ -4,6 +4,11 @@
 #   bash scripts/termux/baslat.sh            # hepsini başlat
 #   ENABLE_9REMOTE=1 bash scripts/termux/baslat.sh   # proot içindeki 9remote'u da (ilk eşleşmeyi önce elle yap!)
 set -u
+export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+export HOME="${TERMUX_HOME:-/data/data/com.termux/files/home}"
+export PATH="$PREFIX/bin:$PATH"
+[[ -f "$PREFIX/lib/libtermux-exec.so" ]] && export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"
+
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
 RUN="$ASISTAN_HOME/run"; mkdir -p "$RUN" "$ASISTAN_HOME/log"
