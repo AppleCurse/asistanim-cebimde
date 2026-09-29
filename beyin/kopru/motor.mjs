@@ -57,13 +57,10 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
     const sure = (this.ayar.arama?.maksSure || 900) * 1000;
     this.zamanlayici = setTimeout(() => this.bitir('sure-doldu'), sure);
 
-    const acilis = this.gorev?.acilis;
-    if (acilis) {
-      this.mesajlar.push({ role: 'assistant', content: acilis });
-      await this._soyle(acilis);
-    } else {
-      await this._sira(() => this._yanitUret('(Görüşme başladı. Kısa bir selamla açılış yap.)', { transkripteYazma: true }));
-    }
+    const asistanAdi = this.ayar?.kullanici?.asistanAdi || 'Cebi';
+    const acilis = this.gorev?.acilis || `Merhaba! Ben asistanınız ${asistanAdi}, nasılsınız?`;
+    this.mesajlar.push({ role: 'assistant', content: acilis });
+    await this._soyle(acilis);
   }
 
   /** Karşı taraf metin olarak konuştu (tarayıcı STT'si veya sunucu STT sonrası). */

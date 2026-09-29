@@ -13,7 +13,7 @@ REPO_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/../.."
   source "$REPO_DIR/.env"; set +a; }
 
 BEDEN_PORT="${BEDEN_PORT:-20130}"; BEYIN_PORT="${BEYIN_PORT:-20131}"
-for ad in 9router beden beyin 9remote; do
+for ad in 9router beden beyin baresip 9remote; do
   if [[ -f "$RUN/$ad.pid" ]] && kill -0 "$(cat "$RUN/$ad.pid")" 2>/dev/null; then
     printf '  %-8s ✓ çalışıyor (pid %s)\n' "$ad" "$(cat "$RUN/$ad.child.pid" 2>/dev/null || cat "$RUN/$ad.pid")"
   else

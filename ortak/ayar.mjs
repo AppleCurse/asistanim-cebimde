@@ -48,13 +48,17 @@ export const VARSAYILAN_AYAR = {
       baseUrl: 'http://127.0.0.1:20128/v1',
       apiKey: '',
       model: '',
+      openrouterApiKey: '',
+      groqApiKey: '',
+      cerebrasApiKey: '',
+      tavilyApiKey: '',
       sicaklik: 0.4,
-      sttModel: 'whisper-1',
+      sttModel: 'whisper-large-v3-turbo',
       ttsModel: 'tts-1',
-      ttsVoice: 'alloy',
+      ttsVoice: 'tr-TR-AhmetNeural',
     },
-    stt: 'android',    // android | 9router
-    tts: 'android',    // android | 9router
+    stt: 'android',    // android | 9router | groq
+    tts: 'android',    // android | 9router | edge-tts
     maksArac: 8,       // bir yanıt için en fazla araç turu
     hafizaLimiti: 6000 // sistem mesajına eklenen hafıza karakter sınırı
   },
@@ -105,6 +109,10 @@ function ortamUygula(ayar) {
   if (e.TTS_VOICE) a.beyin.llm.ttsVoice = e.TTS_VOICE;
   if (e.STT_SAGLAYICI) a.beyin.stt = e.STT_SAGLAYICI;
   if (e.TTS_SAGLAYICI) a.beyin.tts = e.TTS_SAGLAYICI;
+  if (e.OPENROUTER_API_KEY) a.beyin.llm.openrouterApiKey = e.OPENROUTER_API_KEY;
+  if (e.GROQ_API_KEY) a.beyin.llm.groqApiKey = e.GROQ_API_KEY;
+  if (e.CEREBRAS_API_KEY) a.beyin.llm.cerebrasApiKey = e.CEREBRAS_API_KEY;
+  if (e.TAVILY_API_KEY) a.beyin.llm.tavilyApiKey = e.TAVILY_API_KEY;
   return a;
 }
 

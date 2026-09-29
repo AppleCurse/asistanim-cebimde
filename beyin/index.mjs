@@ -14,6 +14,7 @@ import { Hafiza } from './hafiza.mjs';
 import { GorevYoneticisi } from './gorev.mjs';
 import { Asistan } from './asistan.mjs';
 import { tarayiciKoprusuKur } from './kopru/tarayici.mjs';
+import { SipKoprusu } from './kopru/sip.mjs';
 
 const WEB_DIZINI = path.join(path.dirname(fileURLToPath(import.meta.url)), 'web');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
@@ -73,6 +74,7 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
   const hafiza = new Hafiza();
   const gorevler = new GorevYoneticisi({ llm, ayar, hafiza, log });
   const asistan = new Asistan({ llm, beden, ayar, hafiza, gorevler, log });
+  const sipKoprusu = new SipKoprusu({ llm, gorevler, ayar, log });
 
   const yetkiliMi = (req, url) => {
     const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
@@ -131,6 +133,11 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
       if (!govde.talimat?.trim()) throw Object.assign(new Error('talimat gerekli'), { kod: 400 });
       return gorevler.olustur(String(govde.talimat), { kaynak: 'panel', numara: govde.numara });
     }
+    if (M === 'POST' && yol === '/voip/ara') {
+      const numara = govde.numara;
+      if (!numara) throw Object.assign(new Error('numara gerekli'), { kod: 400 });
+      return sipKoprusu.ara({ numara });
+    }
     const gorevEs = yol.match(/^\/gorevler\/([^/]+)(?:\/([^/]+))?$/);
     if (gorevEs) {
       const [, id, eylem] = gorevEs;
@@ -147,6 +154,13 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
         if (!numara) throw Object.assign(new Error('numara yok'), { kod: 400 });
         const s = await beden.ara(numara);
         gorevler.guncelle(id, { durum: 'araniyor', mod: 'hucresel', kisi: { ...g.kisi, numara } });
+        return { ...s, brifing: { acilis: g.acilis, konusma_noktalari: g.konusma_noktalari, sinirlar: g.sinirlar } };
+      }
+      if (M === 'POST' && eylem === 'voip-ara') {
+        const numara = govde.numara || g.kisi?.numara;
+        if (!numara) throw Object.assign(new Error('numara yok'), { kod: 400 });
+        const s = await sipKoprusu.ara({ gorev: g, numara });
+        gorevler.guncelle(id, { durum: 'araniyor', mod: 'voip', kisi: { ...g.kisi, numara } });
         return { ...s, brifing: { acilis: g.acilis, konusma_noktalari: g.konusma_noktalari, sinirlar: g.sinirlar } };
       }
       if (M === 'POST' && eylem === 'sonuc') {

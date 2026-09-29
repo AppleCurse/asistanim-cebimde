@@ -24,7 +24,7 @@ yasiyor() { [[ -f "$RUN/$1.pid" ]] && kill -0 "$(cat "$RUN/$1.pid")" 2>/dev/null
 baslat() {
   local ad="$1"; shift
   if yasiyor "$ad"; then echo "  $ad zaten çalışıyor (pid $(cat "$RUN/$ad.pid"))"; return; fi
-  nohup "$SERVIS" "$ad" "$@" >/dev/null 2>&1 &
+  setsid "$SERVIS" "$ad" "$@" </dev/null >/dev/null 2>&1 &
   sleep 0.3
   echo "  $ad başlatıldı"
 }
@@ -41,6 +41,9 @@ else
 fi
 baslat beden node "$REPO_DIR/beden/server.mjs"
 baslat beyin  node "$REPO_DIR/beyin/index.mjs"
+if command -v proot-distro >/dev/null; then
+  baslat baresip proot-distro login ubuntu -- baresip
+fi
 if [[ "${ENABLE_9REMOTE:-0}" == "1" ]]; then
   baslat 9remote bash "$REPO_DIR/scripts/proot/9remote.sh"
 fi
