@@ -120,6 +120,7 @@ export class LLMIstemci {
     } catch (hata) {
       // 9router başarısız olduysa ve OpenRouter anahtarımız varsa OpenRouter'a düş
       if (this.openrouterApiKey && !this.baseUrl.includes('openrouter.ai')) {
+        console.log('[LLM] 9router başarısız, OpenRouter yedeğine geçiliyor (meta-llama/llama-3.3-70b-instruct)');
         const yedekIstemci = new LLMIstemci({
           baseUrl: 'https://openrouter.ai/api/v1',
           apiKey: this.openrouterApiKey,
@@ -184,7 +185,7 @@ export class LLMIstemci {
   /** Metin → ses (Buffer). */
   async seslendir(metin, { model, ses, format = 'mp3' } = {}) {
     if (!metin || !metin.trim()) return Buffer.alloc(0);
-    const sesSecimi = ses || this.ttsVoice || 'tr-TR-AhmetNeural';
+    const sesSecimi = ses || this.ttsVoice || 'tr-TR-EmelNeural';
 
     // 1. Termux / sistemde edge-tts varsa doğrudan kullan (ücretsiz, doğal Türkçe, ultra hızlı)
     try {

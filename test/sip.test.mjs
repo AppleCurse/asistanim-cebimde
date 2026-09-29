@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { netstringKodla, NetstringAyristirici, pcmToWav, hesaplaRMS } from '../beyin/kopru/sip.mjs';
 
 test('SIP: netstring kodlama ve ayristirma', () => {
-  const veri = { command: 'dial', params: '00905407254626' };
+  const veri = { command: 'dial', params: '00905550000000' };
   const kodlu = netstringKodla(veri);
   assert.equal(kodlu, `${Buffer.byteLength(JSON.stringify(veri))}:${JSON.stringify(veri)},`);
 

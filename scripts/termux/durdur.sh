@@ -5,13 +5,13 @@
 set -u
 export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
 export HOME="${TERMUX_HOME:-/data/data/com.termux/files/home}"
-export PATH="$PREFIX/bin:$PATH"
-[[ -f "$PREFIX/lib/libtermux-exec.so" ]] && export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"
+export PATH="/data/data/com.termux/files/usr/bin:$PREFIX/bin:$PATH"
+unset LD_PRELOAD
 
 export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
 RUN="$ASISTAN_HOME/run"
 LISTE=("$@")
-[[ ${#LISTE[@]} -eq 0 ]] && LISTE=(9remote beyin beden 9router)
+[[ ${#LISTE[@]} -eq 0 ]] && LISTE=(9remote baresip beyin beden 9router)
 for ad in "${LISTE[@]}"; do
   if [[ -f "$RUN/$ad.pid" ]]; then
     kill "$(cat "$RUN/$ad.pid")" 2>/dev/null && echo "  $ad döngüsü durduruldu"

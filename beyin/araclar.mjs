@@ -63,7 +63,7 @@ export const ARACLAR = [
     ['metin'],
     async ({ metin }, ctx) => {
       const { beden, llm, ayar } = ctx;
-      if (ayar.beyin.tts === '9router') {
+      if (ayar.beyin.tts !== 'android') {
         const ses = await llm.seslendir(metin);
         await beden.sesCal({ base64: ses.toString('base64'), uzanti: 'mp3' });
       } else {

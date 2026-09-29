@@ -623,7 +623,7 @@ Sürüm çıkarmak: `package.json` sürümünü artır → commit → `gh releas
 - ✅ **Faz 0 — İskelet (v0.1.0):** beden, beyin, 16 araç, hafıza, görev sistemi, görüşme motoru + tarayıcı yazılım telefonu, PWA panel, Termux yaşam döngüsü scriptleri, proot/9remote kurulumu, 22 test, indirilebilir sürüm.
 - ✅ **Faz 1 — Telefonda canlandırma (Doğrulandı):** gerçek Redmi Note 8 üzerinde Termux:API donanım erişimi (kamera, pil, TTS), 9router arka plan servisi entegrasyonu, bellek optimizasyonu (512MB RAM sınırı), Termux:Boot otomatik açılış kancası ve HTTPS web paneli canlı test edilip doğrulandı.
 - ⏳ **Faz 2 — Duyular:** kayıtlı kişilerle yüz tanıma, QR → aksiyon, OCR akışları, hareket/ses tetikleyicileri ("kim geldi?"), uyandırma kelimesi, gelen SMS/arama özetini söyleme.
-- ⏳ **Faz 3 — VoIP köprüsü (gerçek arama):** Twilio/Telnyx medya akışı adaptörü (μ-law ↔ PCM, sunucu VAD, barge-in), cloudflared/VPS tüneli, DTMF (robot menüler), yerli SIP alternatifi, rıza/kayıt politikası.
+- 🔄 **Faz 3 — VoIP köprüsü (gerçek arama):** Baresip SIP (Zadarma) adaptörü, ALSA dosya köprüsü, duvar saatine kilitli PCM besleyicisi, yankı kapısı ve adaptif VAD, çift yönlü ses akışı (Edge-TTS Emel + Groq Whisper), ctrl_tcp arama kontrolü entegre edildi.
 - ⏳ **Faz 4 — Yaşam:** zamanlayıcılar ("yarın 9'da ara"), tekrarlı görevler, sabah özeti, hafıza konsolidasyonu, push bildirimleri, aile profilleri, isteğe bağlı yerel küçük model.
 
 Madde madde: [docs/yol-haritasi.md](docs/yol-haritasi.md)
