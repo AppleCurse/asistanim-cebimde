@@ -6,8 +6,8 @@
 set -u
 export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
 export HOME="${TERMUX_HOME:-/data/data/com.termux/files/home}"
-export PATH="$PREFIX/bin:$PATH"
-[[ -f "$PREFIX/lib/libtermux-exec.so" ]] && export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"
+export PATH="/data/data/com.termux/files/usr/bin:$PREFIX/bin:$PATH"
+unset LD_PRELOAD
 
 REPO_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/../.." && pwd)"
 export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"

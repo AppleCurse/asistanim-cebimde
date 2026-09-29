@@ -6,7 +6,7 @@ set -u
 export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
 export HOME="${TERMUX_HOME:-/data/data/com.termux/files/home}"
 export PATH="/data/data/com.termux/files/usr/bin:/data/data/com.termux/files/usr/bin/applets:$PREFIX/bin:$PATH"
-[[ -f "$PREFIX/lib/libtermux-exec.so" ]] && export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"
+unset LD_PRELOAD
 
 AD="$1"; shift
 ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"

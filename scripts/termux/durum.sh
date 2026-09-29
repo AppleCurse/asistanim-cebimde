@@ -21,13 +21,13 @@ for ad in 9router beden beyin baresip 9remote; do
   fi
 done
 echo
+TOKEN="${BEYIN_TOKEN:-$(cat "$ASISTAN_HOME/beyin.token" 2>/dev/null || echo '?')}"
 printf '  9router : %s\n' "$(curl -s -m 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:20128/ 2>/dev/null || echo 'yok')"
 printf '  beden   : %s\n' "$(curl -s -m 3 http://127.0.0.1:$BEDEN_PORT/saglik 2>/dev/null || echo 'yok')"
-printf '  beyin   : %s\n' "$(curl -s -m 3 -k http://127.0.0.1:$BEYIN_PORT/saglik 2>/dev/null || curl -s -m 3 -k https://127.0.0.1:$BEYIN_PORT/saglik 2>/dev/null || echo 'yok')"
+printf '  beyin   : %s\n' "$(curl -s -m 2 -k "https://127.0.0.1:$BEYIN_PORT/api/durum?token=$TOKEN" 2>/dev/null | grep -q 'asistan' && echo 'ayakta' || echo 'yok')"
 echo
-TOKEN="${BEYIN_TOKEN:-$(cat "$ASISTAN_HOME/beyin.token" 2>/dev/null || echo '?')}"
 SEMA=http; [[ -f "$ASISTAN_HOME/tls/cert.pem" ]] && SEMA=https
 IP="$(ip -4 addr show wlan0 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1)"
-[[ -z "$IP" ]] && IP="$(termux-wifi-connectioninfo 2>/dev/null | jq -r '.ip // empty' 2>/dev/null)"
+[[ -z "$IP" ]] && IP="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{print $7}')"
 echo "  Panel (aynı Wi-Fi/Tailscale): $SEMA://${IP:-<telefon-ip>}:$BEYIN_PORT/?token=$TOKEN"
 echo "  Loglar: $ASISTAN_HOME/log/   Durdur: bash $REPO_DIR/scripts/termux/durdur.sh"
