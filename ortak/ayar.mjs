@@ -18,7 +18,7 @@ export const HAFIZA_DOSYASI = path.join(ASISTAN_HOME, 'hafiza.md');
 export const VARSAYILAN_AYAR = {
   kullanici: {
     ad: '',            // Asistanın temsil ettiği kişi
-    asistanAdi: 'Cebi',
+    asistanAdi: 'Aspasia',
     dil: 'tr-TR',
     cihaz: 'Xiaomi Redmi Note 8 (Termux)',
   },
@@ -55,7 +55,7 @@ export const VARSAYILAN_AYAR = {
       sicaklik: 0.4,
       sttModel: 'whisper-large-v3-turbo',
       ttsModel: 'tts-1',
-      ttsVoice: 'tr-TR-AhmetNeural',
+      ttsVoice: 'tr-TR-EmelNeural',
     },
     stt: 'android',    // android | 9router | groq
     tts: 'android',    // android | 9router | edge-tts
