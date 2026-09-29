@@ -121,8 +121,12 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
     }
     if (M === 'POST' && yol === '/soyle') {
       if (ayar.beyin.tts !== 'android') {
-        const ses = await llm.seslendir(String(govde.metin || ''));
-        await beden.sesCal({ base64: ses.toString('base64'), uzanti: 'mp3' });
+        try {
+          const ses = await llm.seslendir(String(govde.metin || ''));
+          await beden.sesCal({ base64: ses.toString('base64'), uzanti: 'mp3' });
+        } catch {
+          await beden.konus(String(govde.metin || ''), ayar.kullanici.dil);
+        }
       } else await beden.konus(String(govde.metin || ''), ayar.kullanici.dil);
       return { tamam: true };
     }

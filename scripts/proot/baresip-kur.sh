@@ -13,9 +13,9 @@ if [[ -f "$REPO_DIR/.env" ]]; then
   set +a
 fi
 
-SIP_USER="${SIP_USER:-594999-101}"
+SIP_USER="${SIP_USER:-dahili-no}"
 SIP_PASS="${SIP_PASS:-}"
-SIP_SERVER="${SIP_SERVER:-pbx.zadarma.com}"
+SIP_SERVER="${SIP_SERVER:-sip.saglayici.com}"
 SIP_PORT="${SIP_PORT:-5060}"
 
 echo "▶ Baresip Yapılandırması Hazırlanıyor"
@@ -46,7 +46,7 @@ pcm.mic {
     slave {
         pcm {
             type file
-            file "/tmp/mic.raw"
+            infile "/tmp/mic.raw"
             format "raw"
             slave {
                 pcm "null"
@@ -82,7 +82,6 @@ audio_alert alsa,spk
 # Modüller
 module_path /usr/lib/baresip/modules
 module stdio.so
-module cons.so
 module contact.so
 module alsa.so
 module g711.so
@@ -96,12 +95,13 @@ EOF
 # 3. Baresip accounts
 echo "▶ ~/.baresip/accounts yazılıyor"
 cat << EOF > "$HEDEF_HOME/.baresip/accounts"
-<sip:${SIP_USER}@${SIP_SERVER}>;auth_pass=${SIP_PASS};regint=600;rtcp_mux=yes
+<sip:${SIP_USER}@${SIP_SERVER};transport=udp>;auth_user=${SIP_USER};auth_pass=${SIP_PASS};regint=600;rtcp_mux=yes
 EOF
 chmod 600 "$HEDEF_HOME/.baresip/accounts"
 
 # 4. FIFO / Ham ses borularını hazırla
-touch "$HEDEF_TMP/mic.raw" "$HEDEF_TMP/spk.raw"
+rm -f "$HEDEF_TMP/mic.raw" "$HEDEF_TMP/spk.raw"
+mkfifo "$HEDEF_TMP/mic.raw" "$HEDEF_TMP/spk.raw"
 chmod 666 "$HEDEF_TMP/mic.raw" "$HEDEF_TMP/spk.raw"
 
 echo "✅ Baresip ve ALSA kurulumu başarıyla tamamlandı."

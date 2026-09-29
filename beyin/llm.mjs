@@ -98,7 +98,14 @@ export class LLMIstemci {
    * Dönen değer: { mesaj, kullanim, model }
    */
   async sohbet(mesajlar, { araclar, model, sicaklik, maksToken } = {}) {
-    const modelAdi = model || (await this.modelSagla());
+    let modelAdi = model || (await this.modelSagla());
+    // Görsel varsa ve model metin-only ise Gemini Vision modeline geç
+    const resimVar = mesajlar.some((m) =>
+      Array.isArray(m.content) && m.content.some((c) => c.type === 'image_url')
+    );
+    if (resimVar && !/gemini|gpt-4o|claude-3|vision/i.test(modelAdi)) {
+      modelAdi = 'google/gemini-2.5-flash-lite';
+    }
     const govde = {
       model: modelAdi,
       messages: mesajlar,
@@ -108,7 +115,7 @@ export class LLMIstemci {
       govde.tools = araclar;
       govde.tool_choice = 'auto';
     }
-    if (maksToken) govde.max_tokens = maksToken;
+    govde.max_tokens = maksToken || 1000;
 
     let yanit;
     try {

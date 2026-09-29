@@ -64,8 +64,12 @@ export const ARACLAR = [
     async ({ metin }, ctx) => {
       const { beden, llm, ayar } = ctx;
       if (ayar.beyin.tts !== 'android') {
-        const ses = await llm.seslendir(metin);
-        await beden.sesCal({ base64: ses.toString('base64'), uzanti: 'mp3' });
+        try {
+          const ses = await llm.seslendir(metin);
+          await beden.sesCal({ base64: ses.toString('base64'), uzanti: 'mp3' });
+        } catch {
+          await beden.konus(metin, ayar.kullanici.dil);
+        }
       } else {
         await beden.konus(metin, ayar.kullanici.dil);
       }

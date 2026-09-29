@@ -320,11 +320,11 @@ export class SipKoprusu {
       if (baslatildi) return;
       baslatildi = true;
       this.log.bilgi(`📞 ÇAĞRI AKTİF (${sebep})! Aspasia söze başlıyor.`);
+      this._sesBesleyiciBaslat();
       gorusme.baslat().catch((e) => this.log.hata(`Görüşme başlatma: ${e.message}`));
     };
 
-    // Ses kanallarını hazırla
-    this._sesBesleyiciBaslat();
+    // Dinleyiciyi hazırla (gelen sesi yakalamak için), besleyici ise çağrı açılınca başlatılır
     this._sesDinleyiciBaslat(gorusme, tasiyici);
 
     // Baresip olaylarını dinle (Yalnızca çağrı açılınca başlat)

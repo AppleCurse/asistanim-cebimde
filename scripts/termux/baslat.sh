@@ -34,10 +34,10 @@ termux-wake-lock 2>/dev/null || echo "  (termux-wake-lock yok — Termux:API kur
 
 echo "▶ Servisler"
 command -v sshd >/dev/null && { pgrep -x sshd >/dev/null || sshd; echo "  sshd (port 8022)"; }
-if [[ -f "$REPO_DIR/scripts/termux/9router-servis.sh" ]] && command -v 9router >/dev/null; then
+if [[ "${ENABLE_9ROUTER:-0}" == "1" ]] && [[ -f "$REPO_DIR/scripts/termux/9router-servis.sh" ]] && command -v 9router >/dev/null; then
   baslat 9router bash "$REPO_DIR/scripts/termux/9router-servis.sh"
 else
-  echo "  9router bulunamadı (npm i -g 9router) — proot içinde çalıştırıyorsan LLM_BASE_URL yine localhost:20128 olur"
+  echo "  9router atlandı (.env doğrudan OpenRouter/Groq kullanıyor)"
 fi
 baslat beden node "$REPO_DIR/beden/server.mjs"
 baslat beyin  node "$REPO_DIR/beyin/index.mjs"
