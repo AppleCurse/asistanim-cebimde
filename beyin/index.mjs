@@ -136,7 +136,7 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
     if (M === 'POST' && yol === '/voip/ara') {
       const numara = govde.numara;
       if (!numara) throw Object.assign(new Error('numara gerekli'), { kod: 400 });
-      return sipKoprusu.ara({ numara });
+      return sipKoprusu.ara({ numara, gorev: govde.gorev });
     }
     const gorevEs = yol.match(/^\/gorevler\/([^/]+)(?:\/([^/]+))?$/);
     if (gorevEs) {

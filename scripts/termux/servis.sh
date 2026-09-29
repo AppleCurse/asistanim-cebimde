@@ -5,7 +5,7 @@
 set -u
 export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
 export HOME="${TERMUX_HOME:-/data/data/com.termux/files/home}"
-export PATH="$PREFIX/bin:$PATH"
+export PATH="/data/data/com.termux/files/usr/bin:/data/data/com.termux/files/usr/bin/applets:$PREFIX/bin:$PATH"
 [[ -f "$PREFIX/lib/libtermux-exec.so" ]] && export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"
 
 AD="$1"; shift

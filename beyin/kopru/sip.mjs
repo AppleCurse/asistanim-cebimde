@@ -7,8 +7,10 @@ import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { Gorusme } from './motor.mjs';
 
-const IN_FIFO_YOLU = '/data/data/com.termux/files/usr/var/lib/proot-distro/containers/ubuntu/rootfs/tmp/baresip_in.fifo';
-const OUT_FIFO_YOLU = '/data/data/com.termux/files/usr/var/lib/proot-distro/containers/ubuntu/rootfs/tmp/baresip_out.fifo';
+const ROOTFS_TMP = '/data/data/com.termux/files/usr/var/lib/proot-distro/containers/ubuntu/rootfs/tmp';
+const BASE_TMP = fs.existsSync(ROOTFS_TMP) ? ROOTFS_TMP : '/tmp';
+const IN_FIFO_YOLU = `${BASE_TMP}/mic.raw`;
+const OUT_FIFO_YOLU = `${BASE_TMP}/spk.raw`;
 
 /** DJB Netstring kodlama: <uzunluk>:<veri>, */
 export function netstringKodla(nesne) {
@@ -17,7 +19,7 @@ export function netstringKodla(nesne) {
   return `${len}:${json},`;
 }
 
-/** Netstring akış ayrıştırıcı */
+/** Netstring ve JSON akış ayrıştırıcı */
 export class NetstringAyristirici {
   constructor(onMesaj) {
     this.onMesaj = onMesaj;
@@ -26,24 +28,39 @@ export class NetstringAyristirici {
 
   besle(chunk) {
     this.tampon += chunk.toString('utf8');
-    while (true) {
+    while (this.tampon.length > 0) {
+      // 1. Netstring formatı: <uzunluk>:<json>,
       const ikiNokta = this.tampon.indexOf(':');
-      if (ikiNokta === -1) break;
-      const lenStr = this.tampon.slice(0, ikiNokta);
-      const len = parseInt(lenStr, 10);
-      if (isNaN(len)) {
-        this.tampon = '';
-        break;
+      if (ikiNokta !== -1) {
+        const lenStr = this.tampon.slice(0, ikiNokta).trim();
+        const len = parseInt(lenStr, 10);
+        if (!isNaN(len) && len > 0 && len < 100000) {
+          if (this.tampon.length >= ikiNokta + 1 + len + 1) {
+            const veri = this.tampon.slice(ikiNokta + 1, ikiNokta + 1 + len);
+            this.tampon = this.tampon.slice(ikiNokta + 1 + len + 1);
+            try {
+              this.onMesaj(JSON.parse(veri));
+            } catch {}
+            continue;
+          } else {
+            break; // paketin kalan kısmı henüz gelmedi
+          }
+        }
       }
-      if (this.tampon.length < ikiNokta + 1 + len + 1) break;
-      const veri = this.tampon.slice(ikiNokta + 1, ikiNokta + 1 + len);
-      this.tampon = this.tampon.slice(ikiNokta + 1 + len + 1);
-      try {
-        const parsed = JSON.parse(veri);
-        this.onMesaj(parsed);
-      } catch (e) {
-        // hatali json tolere et
+
+      // 2. Satır bazlı / düz JSON formatı
+      const satirSonu = this.tampon.indexOf('\n');
+      if (satirSonu !== -1) {
+        const satir = this.tampon.slice(0, satirSonu).trim();
+        this.tampon = this.tampon.slice(satirSonu + 1);
+        if (satir.startsWith('{') && satir.endsWith('}')) {
+          try {
+            this.onMesaj(JSON.parse(satir));
+          } catch {}
+        }
+        continue;
       }
+      break;
     }
   }
 }
@@ -138,15 +155,12 @@ export class SipKoprusu {
     return '00' + n;
   }
 
-  /** Baresip mikrofon girişine (in.fifo) kesintisiz ses/sessizlik basan besleyici */
+  /** Baresip mikrofon girişine (mic.raw) kesintisiz ham S16LE PCM basan besleyici */
   _sesBesleyiciBaslat() {
     try {
       this.inFifoFd = fs.openSync(IN_FIFO_YOLU, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
-      // Standart 44 byte WAV başlığı (çok büyük data boyutu ile)
-      const wavBasligi = pcmToWav(Buffer.alloc(0x70000000));
-      fs.writeSync(this.inFifoFd, wavBasligi.slice(0, 44));
     } catch (e) {
-      this.log.uyari(`in.fifo açılamadı: ${e.message}`);
+      this.log.uyari(`mic.raw açılamadı: ${e.message}`);
       return;
     }
 
@@ -176,17 +190,20 @@ export class SipKoprusu {
     }, 20);
   }
 
-  /** Baresip hoparlör çıkışını (out.fifo) dinleyip VAD ile karşı tarafın konuşmasını yakalar */
-  _sesDinleyiciBaslat(gorusme, tasiyici) {
+  /** Baresip hoparlör çıkışını (spk.raw) dinleyip VAD ile karşı tarafın konuşmasını yakalar */
+  _sesDinleyiciBaslat(gorusme, tasiyici, onSes) {
     let konusmaParcalari = [];
     let sessizlikAdimSayisi = 0;
     const ENERJI_ESIGI = 350; // RMS konuşma eşiği
 
     try {
-      this.outFifoStream = fs.createReadStream(OUT_FIFO_YOLU, { highWaterMark: 320 });
+      // O_RDWR olarak aç: Writer (Baresip) kapansa da stream asla EOF vermez
+      const outFd = fs.openSync(OUT_FIFO_YOLU, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
+      this.outFifoStream = fs.createReadStream(null, { fd: outFd, highWaterMark: 320 });
       this.outFifoStream.on('data', (chunk) => {
         const rms = hesaplaRMS(chunk);
         if (rms > ENERJI_ESIGI) {
+          onSes?.();
           // Karşı taraf konuşuyor -> Asistan konuşuyorsa barge-in yap
           if (this.calanSesPcm) {
             tasiyici.sesDurdur();
@@ -208,9 +225,9 @@ export class SipKoprusu {
           }
         }
       });
-      this.outFifoStream.on('error', (e) => this.log.uyari(`out.fifo okuma: ${e.message}`));
+      this.outFifoStream.on('error', (e) => this.log.uyari(`spk.raw okuma: ${e.message}`));
     } catch (e) {
-      this.log.uyari(`out.fifo dinleyici başlatılamadı: ${e.message}`);
+      this.log.uyari(`spk.raw dinleyici başlatılamadı: ${e.message}`);
     }
   }
 
@@ -271,24 +288,34 @@ export class SipKoprusu {
     });
     this.aktifGorusme = gorusme;
 
+    let baslatildi = false;
+    const gorusmeyiBaslat = (sebep) => {
+      if (baslatildi) return;
+      baslatildi = true;
+      this.log.bilgi(`📞 ÇAĞRI AKTİF (${sebep})! Aspasia söze başlıyor.`);
+      gorusme.baslat().catch((e) => this.log.hata(`Görüşme başlatma: ${e.message}`));
+    };
+
     // Ses kanallarını hazırla
     this._sesBesleyiciBaslat();
-    this._sesDinleyiciBaslat(gorusme, tasiyici);
+    this._sesDinleyiciBaslat(gorusme, tasiyici, () => gorusmeyiBaslat('Karşı taraf sesi algılandı (VAD)'));
 
     // Baresip olaylarını dinle
     const ayristirici = new NetstringAyristirici((msg) => {
-      if (msg.event && msg.class === 'call') {
-        if (msg.type === 'CALL_ESTABLISHED') {
-          this.log.bilgi('📞 ÇAĞRI BAĞLANDI! Karşı taraf telefonu açtı.');
-          gorusme.baslat().catch((e) => this.log.hata(`Görüşme başlatma: ${e.message}`));
-        } else if (msg.type === 'CALL_CLOSED') {
-          this.log.bilgi('📴 ÇAĞRI SONLANDI (Karşı taraf kapattı).');
-          gorusme.bitir('karsi-kapatti').catch(() => {});
-        }
+      this.log.bilgi(`Baresip olay: ${JSON.stringify(msg)}`);
+      const tip = msg.type || msg.event;
+      if (tip === 'CALL_ESTABLISHED' || tip === 'CALL_ANSWERED') {
+        gorusmeyiBaslat(`SIP ${tip}`);
+      } else if (tip === 'CALL_CLOSED') {
+        this.log.bilgi('📴 ÇAĞRI SONLANDI (Karşı taraf kapattı).');
+        gorusme.bitir('karsi-kapatti').catch(() => {});
       }
     });
 
-    soket.on('data', (d) => ayristirici.besle(d));
+    soket.on('data', (d) => {
+      this.log.bilgi(`Baresip soket (${d.length} bayt): ${d.toString('utf8').slice(0, 120)}`);
+      ayristirici.besle(d);
+    });
     soket.on('close', () => this._temizle());
 
     // Aramayı çevir

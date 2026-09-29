@@ -74,7 +74,10 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
 
   /** Karşı taraftan ham ses geldi → STT → kullaniciKonustu */
   async sesGeldi(buffer, mime = 'audio/webm') {
-    if (!this.aktif) return;
+    if (!this.aktif) {
+      this.aktif = true;
+      this.baslangic = this.baslangic || Date.now();
+    }
     this.tasiyici.durum?.({ asama: 'dinliyor' });
     let metin = '';
     try {
