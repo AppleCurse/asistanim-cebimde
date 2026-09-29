@@ -155,7 +155,7 @@ export class SipKoprusu {
     return '00' + n;
   }
 
-  /** Baresip mikrofon girişine (mic.raw) kesintisiz ham S16LE PCM basan besleyici */
+  /** Baresip mikrofon girişine (mic.raw) kesintisiz, duvar saatine kilitli S16LE PCM basan besleyici */
   _sesBesleyiciBaslat() {
     try {
       this.inFifoFd = fs.openSync(IN_FIFO_YOLU, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
@@ -165,36 +165,48 @@ export class SipKoprusu {
     }
 
     const sessizPaket = Buffer.alloc(320); // 20ms @ 8000Hz 16-bit mono = 320 byte
+    const baslangicZamani = Date.now();
+    let gonderilenPaketSayisi = 0;
+
     this.besleyiciZamanlayici = setInterval(() => {
       if (!this.inFifoFd) return;
-      let paket = sessizPaket;
-      if (this.calanSesPcm && !this.sesCalmaDurduruldu) {
-        const kalan = this.calanSesPcm.length - this.calanSesKonumu;
-        if (kalan > 0) {
-          const boy = Math.min(320, kalan);
-          paket = this.calanSesPcm.slice(this.calanSesKonumu, this.calanSesKonumu + boy);
-          this.calanSesKonumu += boy;
-          if (boy < 320) {
-            paket = Buffer.concat([paket, Buffer.alloc(320 - boy)]);
+      const gecenMs = Date.now() - baslangicZamani;
+      const olmasiGereken = Math.floor(gecenMs / 20);
+      const fark = Math.min(5, Math.max(0, olmasiGereken - gonderilenPaketSayisi));
+      if (fark <= 0) return;
+
+      for (let i = 0; i < fark; i++) {
+        let paket = sessizPaket;
+        if (this.calanSesPcm && !this.sesCalmaDurduruldu) {
+          const kalan = this.calanSesPcm.length - this.calanSesKonumu;
+          if (kalan > 0) {
+            const boy = Math.min(320, kalan);
+            paket = this.calanSesPcm.slice(this.calanSesKonumu, this.calanSesKonumu + boy);
+            this.calanSesKonumu += boy;
+            if (boy < 320) {
+              paket = Buffer.concat([paket, Buffer.alloc(320 - boy)]);
+            }
+          } else {
+            this.calanSesPcm = null;
+            this.calanSesKonumu = 0;
           }
-        } else {
-          this.calanSesPcm = null;
-          this.calanSesKonumu = 0;
+        }
+        try {
+          fs.writeSync(this.inFifoFd, paket);
+          gonderilenPaketSayisi++;
+        } catch (e) {
+          // FIFO dolu veya okuyucu meşgulse döngüden çık
+          break;
         }
       }
-      try {
-        fs.writeSync(this.inFifoFd, paket);
-      } catch (e) {
-        // FIFO dolu veya okuyucu yoksa yut
-      }
-    }, 20);
+    }, 10);
   }
 
-  /** Baresip hoparlör çıkışını (spk.raw) dinleyip VAD ile karşı tarafın konuşmasını yakalar */
-  _sesDinleyiciBaslat(gorusme, tasiyici, onSes) {
+  /** Baresip hoparlör çıkışını (spk.raw) dinleyip VAD ve yankı kapısı ile karşı tarafın konuşmasını yakalar */
+  _sesDinleyiciBaslat(gorusme, tasiyici) {
     let konusmaParcalari = [];
     let sessizlikAdimSayisi = 0;
-    const ENERJI_ESIGI = 350; // RMS konuşma eşiği
+    let tabanGurultu = 100; // RMS gürültü tabanı (adaptif)
 
     try {
       // O_RDWR olarak aç: Writer (Baresip) kapansa da stream asla EOF vermez
@@ -202,23 +214,38 @@ export class SipKoprusu {
       this.outFifoStream = fs.createReadStream(null, { fd: outFd, highWaterMark: 320 });
       this.outFifoStream.on('data', (chunk) => {
         const rms = hesaplaRMS(chunk);
-        if (rms > ENERJI_ESIGI) {
-          onSes?.();
-          // Karşı taraf konuşuyor -> Asistan konuşuyorsa barge-in yap
-          if (this.calanSesPcm) {
+        const asistanKonusuyor = Boolean(this.calanSesPcm && !this.sesCalmaDurduruldu);
+
+        // 1. YANKI KAPISI (Echo Gate):
+        // Asistan konuşurken PSTN/akustik yankıyı "karşı taraf konuştu" sanıp kendi sesini kesmesin.
+        if (asistanKonusuyor) {
+          // Yalnızca kullanıcı bilinçli ve yüksek sesle söz keserse (barge-in) durdur
+          if (rms > 1800) {
+            this.log.bilgi(`[Barge-in] Yüksek sesli kesme algılandı (RMS ${Math.round(rms)}), asistan susturuluyor`);
             tasiyici.sesDurdur();
           }
+          return; // Asistan konuşurken yankı sesini VAD tamponuna ekleme
+        }
+
+        // 2. ADAPTİF GÜRÜLTÜ TABANI:
+        if (rms < 300) {
+          tabanGurultu = tabanGurultu * 0.95 + rms * 0.05;
+        }
+        const dinamikEsik = Math.max(350, tabanGurultu * 2.5);
+
+        // 3. VAD (Ses Aktivite Algılama):
+        if (rms > dinamikEsik) {
           konusmaParcalari.push(chunk);
           sessizlikAdimSayisi = 0;
         } else if (konusmaParcalari.length > 0) {
           konusmaParcalari.push(chunk);
           sessizlikAdimSayisi++;
-          // 30 x 20ms = ~600ms sessizlik -> konuşma bitti
+          // 30 x 20ms = ~600ms sessizlik -> karşı tarafın cümlesi bitti
           if (sessizlikAdimSayisi >= 30) {
             const pcmVeri = Buffer.concat(konusmaParcalari);
             konusmaParcalari = [];
             sessizlikAdimSayisi = 0;
-            if (pcmVeri.length >= 8000) { // En az 0.5 saniye ses varsa
+            if (pcmVeri.length >= 8000) { // En az 0.5 saniye ses varsa STT'ye ver
               const wav = pcmToWav(pcmVeri);
               gorusme.sesGeldi(wav, 'audio/wav').catch((e) => this.log.hata(`STT hatası: ${e.message}`));
             }
@@ -298,22 +325,22 @@ export class SipKoprusu {
 
     // Ses kanallarını hazırla
     this._sesBesleyiciBaslat();
-    this._sesDinleyiciBaslat(gorusme, tasiyici, () => gorusmeyiBaslat('Karşı taraf sesi algılandı (VAD)'));
+    this._sesDinleyiciBaslat(gorusme, tasiyici);
 
-    // Baresip olaylarını dinle
+    // Baresip olaylarını dinle (Yalnızca çağrı açılınca başlat)
     const ayristirici = new NetstringAyristirici((msg) => {
-      this.log.bilgi(`Baresip olay: ${JSON.stringify(msg)}`);
+      this.log.bilgi(`[Baresip Olay] ${JSON.stringify(msg)}`);
       const tip = msg.type || msg.event;
       if (tip === 'CALL_ESTABLISHED' || tip === 'CALL_ANSWERED') {
         gorusmeyiBaslat(`SIP ${tip}`);
       } else if (tip === 'CALL_CLOSED') {
-        this.log.bilgi('📴 ÇAĞRI SONLANDI (Karşı taraf kapattı).');
+        this.log.bilgi('📴 ÇAĞRI SONLANDI (Karşı taraf veya santral kapattı).');
         gorusme.bitir('karsi-kapatti').catch(() => {});
       }
     });
 
     soket.on('data', (d) => {
-      this.log.bilgi(`Baresip soket (${d.length} bayt): ${d.toString('utf8').slice(0, 120)}`);
+      this.log.bilgi(`[Baresip Ham Çıktı] (${d.length} bayt): ${d.toString('utf8').trim()}`);
       ayristirici.besle(d);
     });
     soket.on('close', () => this._temizle());

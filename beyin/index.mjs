@@ -120,7 +120,7 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
       return { ad: s.ad, mime: s.mime, base64: s.base64 };
     }
     if (M === 'POST' && yol === '/soyle') {
-      if (ayar.beyin.tts === '9router') {
+      if (ayar.beyin.tts !== 'android') {
         const ses = await llm.seslendir(String(govde.metin || ''));
         await beden.sesCal({ base64: ses.toString('base64'), uzanti: 'mp3' });
       } else await beden.konus(String(govde.metin || ''), ayar.kullanici.dil);
