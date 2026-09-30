@@ -88,7 +88,7 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
       this.tasiyici.durum?.({ asama: 'hata', mesaj: `Ses yazıya çevrilemedi: ${hata.message}` });
       return;
     }
-    if (!metin) {
+    if (!metin || metin.length < 2 || /altyaz[ıi]|subtitles?|izlediğiniz için/i.test(metin)) {
       this.tasiyici.durum?.({ asama: 'bekliyor', mesaj: 'Anlaşılır bir şey duyulmadı' });
       return;
     }

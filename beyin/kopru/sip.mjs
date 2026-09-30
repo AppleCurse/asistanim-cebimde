@@ -137,7 +137,27 @@ export class SipKoprusu {
     this.sesCalmaDurduruldu = false;
     this.besleyiciZamanlayici = null;
     this.inFifoFd = null;
+    this.outFifoFd = null;
     this.outFifoStream = null;
+    this.cagriAktif = false;
+    this._fifoKilitleriniAc();
+  }
+
+  _fifoKilitleriniAc() {
+    try {
+      if (!this.inFifoFd && fs.existsSync(IN_FIFO_YOLU)) {
+        this.inFifoFd = fs.openSync(IN_FIFO_YOLU, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
+      }
+    } catch (e) {
+      this.log?.uyari?.(`inFifo açılamadı: ${e.message}`);
+    }
+    try {
+      if (!this.outFifoFd && fs.existsSync(OUT_FIFO_YOLU)) {
+        this.outFifoFd = fs.openSync(OUT_FIFO_YOLU, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
+      }
+    } catch (e) {
+      this.log?.uyari?.(`outFifo açılamadı: ${e.message}`);
+    }
   }
 
   _baglan() {
@@ -161,10 +181,9 @@ export class SipKoprusu {
 
   /** Baresip mikrofon girişine (mic.raw) kesintisiz, duvar saatine kilitli S16LE PCM basan besleyici */
   _sesBesleyiciBaslat() {
-    try {
-      this.inFifoFd = fs.openSync(IN_FIFO_YOLU, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
-    } catch (e) {
-      this.log.uyari(`mic.raw açılamadı: ${e.message}`);
+    this._fifoKilitleriniAc();
+    if (!this.inFifoFd) {
+      this.log.uyari(`mic.raw açılamadı: kilit yok`);
       return;
     }
 
@@ -172,6 +191,7 @@ export class SipKoprusu {
     const baslangicZamani = Date.now();
     let gonderilenPaketSayisi = 0;
 
+    if (this.besleyiciZamanlayici) clearInterval(this.besleyiciZamanlayici);
     this.besleyiciZamanlayici = setInterval(() => {
       if (!this.inFifoFd) return;
       const gecenMs = Date.now() - baslangicZamani;
@@ -198,8 +218,7 @@ export class SipKoprusu {
         try {
           fs.writeSync(this.inFifoFd, paket);
           gonderilenPaketSayisi++;
-        } catch (e) {
-          // FIFO dolu veya okuyucu meşgulse döngüden çık
+        } catch {
           break;
         }
       }
@@ -208,34 +227,50 @@ export class SipKoprusu {
 
   /** Baresip hoparlör çıkışını (spk.raw) dinleyip VAD ve yankı kapısı ile karşı tarafın konuşmasını yakalar */
   _sesDinleyiciBaslat(gorusme, tasiyici) {
+    this._fifoKilitleriniAc();
+    if (!this.outFifoFd) {
+      this.log.uyari(`spk.raw dinleyici başlatılamadı: kilit yok`);
+      return;
+    }
+
     let konusmaParcalari = [];
     let sessizlikAdimSayisi = 0;
-    let tabanGurultu = 100; // RMS gürültü tabanı (adaptif)
+    let tabanGurultu = 100;
+    let sonSttZamani = 0;
 
     try {
-      // O_RDWR olarak aç: Writer (Baresip) kapansa da stream asla EOF vermez
-      const outFd = fs.openSync(OUT_FIFO_YOLU, fs.constants.O_RDWR);
-      this.outFifoStream = fs.createReadStream(null, { fd: outFd, highWaterMark: 320 });
+      if (this.outFifoStream) {
+        try { this.outFifoStream.destroy(); } catch {}
+      }
+      this.outFifoStream = fs.createReadStream(null, { fd: this.outFifoFd, autoClose: false, highWaterMark: 320 });
       this.outFifoStream.on('data', (chunk) => {
+        // Yalnızca çağrı aktifken karşı tarafın sesini işle (çaldırma/ringback tonunu yok say)
+        if (!this.cagriAktif) return;
+
         const rms = hesaplaRMS(chunk);
         const asistanKonusuyor = Boolean(this.calanSesPcm && !this.sesCalmaDurduruldu);
 
-        // 1. YANKI KAPISI (Echo Gate):
-        // Asistan konuşurken PSTN/akustik yankıyı "karşı taraf konuştu" sanıp kendi sesini kesmesin.
+        // 1. YANKI KAPISI & BARGE-IN:
         if (asistanKonusuyor) {
-          // Yalnızca kullanıcı bilinçli ve yüksek sesle söz keserse (barge-in) durdur
+          konusmaParcalari = [];
           if (rms > 1800) {
             this.log.bilgi(`[Barge-in] Yüksek sesli kesme algılandı (RMS ${Math.round(rms)}), asistan susturuluyor`);
             tasiyici.sesDurdur();
           }
-          return; // Asistan konuşurken yankı sesini VAD tamponuna ekleme
+          return;
+        }
+
+        // Görüşme motoru yanıt hazırlıyorsa yeni kayıt alma
+        if (gorusme.durum === 'dusununuyor') {
+          konusmaParcalari = [];
+          return;
         }
 
         // 2. ADAPTİF GÜRÜLTÜ TABANI:
         if (rms < 300) {
           tabanGurultu = tabanGurultu * 0.95 + rms * 0.05;
         }
-        const dinamikEsik = Math.max(350, tabanGurultu * 2.5);
+        const dinamikEsik = Math.max(400, tabanGurultu * 2.5);
 
         // 3. VAD (Ses Aktivite Algılama):
         if (rms > dinamikEsik) {
@@ -244,12 +279,15 @@ export class SipKoprusu {
         } else if (konusmaParcalari.length > 0) {
           konusmaParcalari.push(chunk);
           sessizlikAdimSayisi++;
-          // 30 x 20ms = ~600ms sessizlik -> karşı tarafın cümlesi bitti
-          if (sessizlikAdimSayisi >= 30) {
+          // 40 x 20ms = ~800ms sessizlik -> karşı tarafın cümlesi bitti
+          if (sessizlikAdimSayisi >= 40) {
             const pcmVeri = Buffer.concat(konusmaParcalari);
             konusmaParcalari = [];
             sessizlikAdimSayisi = 0;
-            if (pcmVeri.length >= 8000) { // En az 0.5 saniye ses varsa STT'ye ver
+            const simdi = Date.now();
+            // En az 0.8 saniye (12800 bayt) ve iki STT isteği arasında en az 1.5s boşluk
+            if (pcmVeri.length >= 12800 && simdi - sonSttZamani > 1500) {
+              sonSttZamani = simdi;
               const wav = pcmToWav(pcmVeri);
               gorusme.sesGeldi(wav, 'audio/wav').catch((e) => this.log.hata(`STT hatası: ${e.message}`));
             }
@@ -323,15 +361,16 @@ export class SipKoprusu {
     const gorusmeyiBaslat = (sebep) => {
       if (baslatildi) return;
       baslatildi = true;
+      this.cagriAktif = true;
       this.log.bilgi(`📞 ÇAĞRI AKTİF (${sebep})! Aspasia söze başlıyor.`);
-      this._sesBesleyiciBaslat();
       gorusme.baslat().catch((e) => this.log.hata(`Görüşme başlatma: ${e.message}`));
     };
 
-    // Dinleyiciyi hazırla (gelen sesi yakalamak için), besleyici ise çağrı açılınca başlatılır
+    // FIFO'ları Baresip açılışı için hemen hazır tut (besleyici sessiz paket basarak saati besler)
+    this._sesBesleyiciBaslat();
     this._sesDinleyiciBaslat(gorusme, tasiyici);
 
-    // Baresip olaylarını dinle (Yalnızca çağrı açılınca başlat)
+    // Baresip olaylarını dinle (Yalnızca çağrı açılınca söze başla)
     const ayristirici = new NetstringAyristirici((msg) => {
       this.log.bilgi(`[Baresip Olay] ${JSON.stringify(msg)}`);
       const tip = msg.type || msg.event;
@@ -355,13 +394,10 @@ export class SipKoprusu {
   }
 
   _temizle() {
+    this.cagriAktif = false;
     if (this.besleyiciZamanlayici) {
       clearInterval(this.besleyiciZamanlayici);
       this.besleyiciZamanlayici = null;
-    }
-    if (this.inFifoFd) {
-      try { fs.closeSync(this.inFifoFd); } catch {}
-      this.inFifoFd = null;
     }
     if (this.outFifoStream) {
       try { this.outFifoStream.destroy(); } catch {}
