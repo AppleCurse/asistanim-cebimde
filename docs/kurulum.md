@@ -121,6 +121,7 @@ Depo `/root/asistanim-cebimde`, ayarlar `/root/.asistan` olarak içeriye bağlan
 | `LLM hazır değil` | 9router çalışmıyor (`9router`), `LLM_API_KEY` yanlış, sağlayıcı bağlı değil. `curl -H "Authorization: Bearer $LLM_API_KEY" http://127.0.0.1:20128/v1/models` |
 | Kamera 30 sn sonra hata | Başka uygulama kamerayı tutuyor; MIUI izinlerini kontrol et; ekran kilitliyken bazı ROM'lar kamerayı vermez → ekranı kilitsiz, karartılmış tut. |
 | `termux-microphone-record` boş dosya | Mikrofon izni; arama sırasında mikrofon telefon uygulamasında kilitlidir (bkz. telefon-gorusmesi.md). |
+| VoIP'ta karşı taraf ses duymuyor / arama açılmıyor | `bash scripts/termux/ses-testi.sh` (çaldırmadan 3 adımlık kanıt). Kırmızıysa arama kapısı kapalıdır; betik `.asoundrc`/FIFO/besleyici reçetesini basar. Log: `grep -iE 'mic.raw\|SES KANALI' ~/.asistan/log/beyin.log` |
 | Servisler geceleri ölüyor | MIUI pil kısıtı / otomatik başlat kapalı; `termux-wake-lock` bildirimi görünmeli; Android 12+ ROM'larda phantom process killer → `adb shell device_config put activity_manager max_phantom_processes 2147483647`. |
 | Panelde mikrofon izni yok | HTTPS değil → §6. |
 | 9remote `sharp` / `koffi` hatası | Termux'ta değil proot'ta çalıştır (`scripts/proot/9remote.sh`). |

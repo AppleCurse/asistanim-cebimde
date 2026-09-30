@@ -19,5 +19,6 @@ npm test
 node scripts/dev/sahte-ortam.mjs        # telefon olmadan panel: http://localhost:20131/?token=dev
 npm run sohbet                          # terminalden asistan (gerçek 9router + beden gerekir)
 bash scripts/termux/durum.sh            # telefonda: kim yaşıyor
+bash scripts/termux/ses-testi.sh        # telefonda: ses gidiş hattı teşhisi (arama ÇALDIRMAZ; arama kapısını açar/kapar)
 tail -f ~/.asistan/log/beyin.log
 ```

@@ -159,7 +159,7 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
     if (benimNesil !== this.nesil || !this.aktif) return; // kullanıcı araya girdi, bu yanıt bayat
 
     const bitiyor = icerik.includes(BITIS_ETIKETI);
-    const temiz = icerik.replace(BITIS_ETIKETI, '').trim();
+    const temiz = icerik.replaceAll(BITIS_ETIKETI, '').trim();
     this.mesajlar.push({ role: 'assistant', content: icerik });
     if (temiz) await this._soyle(temiz);
     if (bitiyor) await this.bitir('asistan-kapatti');

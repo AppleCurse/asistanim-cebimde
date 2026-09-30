@@ -28,6 +28,11 @@ export class NetstringAyristirici {
 
   besle(chunk) {
     this.tampon += chunk.toString('utf8');
+    // Ayrıştırılamayan çöp akış tamponu sonsuz büyümesin (256 KB tavan)
+    if (this.tampon.length > 256 * 1024) {
+      this.tampon = '';
+      return;
+    }
     while (this.tampon.length > 0) {
       // 1. Netstring formatı: <uzunluk>:<json>,
       const ikiNokta = this.tampon.indexOf(':');
@@ -151,6 +156,7 @@ export class SipKoprusu {
     this._sesKanaliOlusuLoglandi = false;
     this.sesKanaliDurumu = 'dogrulanmadi'; // dogrulanmadi | saglam | olu
     this.sesKanalGozcusu = null;
+    this._aramaKilit = false;
     this._fifoKilitleriniAc();
   }
 
@@ -394,10 +400,27 @@ export class SipKoprusu {
     }, 2000);
   }
 
-  async ara({ gorev, numara }) {
+  async ara(secimler) {
+    // Eşzamanlı arama kilidi: çağrı sürerken ikinci arama ilkini bozmasın (çift çaldırma!)
+    if (this._aramaKilit) {
+      throw Object.assign(new Error('Zaten aktif bir çağrı var — önce bitmesini bekleyin'), { kod: 409 });
+    }
+    this._aramaKilit = true;
+    try {
+      return await this._araIc(secimler);
+    } catch (hata) {
+      this._aramaKilit = false;
+      throw hata;
+    }
+  }
+
+  async _araIc({ gorev, numara }) {
     // ARAMA KAPISI: ses testi (scripts/termux/ses-testi.sh) yeşil olmadan kimse ÇALDIRILMAZ.
     if (!this._sesKapisiAcikMi()) {
-      throw new Error('Ses kanalı doğrulanmadı — ses testi yeşil olana kadar arama kapalı. Önce `bash scripts/termux/ses-testi.sh` çalıştır (çaldırmadan kanıtlar). Acil bypass: SES_KANALI_KAPISI=0');
+      throw Object.assign(
+        new Error('Ses kanalı doğrulanmadı — ses testi yeşil olana kadar arama kapalı. Önce `bash scripts/termux/ses-testi.sh` çalıştır (çaldırmadan kanıtlar). Acil bypass: SES_KANALI_KAPISI=0'),
+        { kod: 423 },
+      );
     }
     const hedefNumara = this.formatlaNumara(numara || gorev?.kisi?.numara);
     if (!hedefNumara) throw new Error('Geçersiz telefon numarası');
@@ -507,6 +530,7 @@ export class SipKoprusu {
 
   _temizle() {
     this.cagriAktif = false;
+    this._aramaKilit = false;
     clearTimeout(this.sesKanalGozcusu);
     this.sesKanalGozcusu = null;
     this.sesKanaliDurumu = 'dogrulanmadi';

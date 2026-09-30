@@ -40,8 +40,21 @@ export class GorevYoneticisi {
 
   kaydet(gorev) {
     gorev.guncellendi = new Date().toISOString();
-    fs.writeFileSync(this._yol(gorev.id), JSON.stringify(gorev, null, 2));
+    const yol = this._yol(gorev.id);
+    // Atomik yaz: yarım kalmış JSON (güç kesilmesi vb.) görevi bozmasın
+    const gecici = `${yol}.tmp`;
+    fs.writeFileSync(gecici, JSON.stringify(gorev, null, 2));
+    fs.renameSync(gecici, yol);
     return gorev;
+  }
+
+  /** Görev kaydını (brifing + transkript + sonuç) kalıcı olarak siler — gizlilik: kullanıcı kayıtları silebilmeli. */
+  sil(id) {
+    const yol = this._yol(id);
+    if (!fs.existsSync(yol)) return false;
+    fs.rmSync(yol);
+    this.log?.bilgi(`görev kaydı silindi #${id} (transkript dahil)`);
+    return true;
   }
 
   al(id) {

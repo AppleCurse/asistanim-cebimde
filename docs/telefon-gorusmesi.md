@@ -10,7 +10,7 @@ Termux:API ile `termux-telephony-call` numarayı çevirebilir. Ama Android, root
 |---|---|---|---|
 | **tarayici** | Cebindeki telefonun tarayıcısı ↔ WebSocket ↔ görüşme motoru | Asistan | ✅ çalışıyor — geliştirme, test ve asistanla sesli sohbet |
 | **hucresel** | Eski telefon hattı çevirir; brifing panelde "kopya kâğıdı" olarak durur | **Sen** (hoparlörden) | ✅ çalışıyor — asistan hazırlar, çevirir, sonucu senden alır ve hafızaya yazar |
-| **voip** | Bulut telefon API'si / SIP: ses akışı motorun içinden geçer | Asistan | ⏳ Faz 3 — gerçek hedef |
+| **voip** | Bulut telefon API'si / SIP: ses akışı motorun içinden geçer | Asistan | ✅ çalışıyor — baresip/SIP köprüsü (Zadarma), ses kanalı gözcüsü + arama kapısı |
 
 ## Görüşme motoru (bugün hazır olan kısım)
 
@@ -64,13 +64,13 @@ Gereksinim: sağlayıcının webhook'a ulaşabileceği **genel adres**. Eski tel
 
 Türkiye numarası: Twilio/Telnyx TR numarası vermez ama dış aramada arayan numara olarak doğrulanmış kendi cep numaranı gösterebilirsin (Twilio "Verified Caller ID"). Yerli alternatifler (Netgsm, Bulutfon, Verimor) SIP trunk verir → B seçeneği.
 
-### B) SIP trunk + telefonun kendisi SIP uç noktası
-proot Ubuntu içinde `baresip` (`apt install baresip`) veya `pjsua`; SIP hesabı yerli operatörden. Ses giriş/çıkışını dosya/pipe modülleriyle motora bağlarız (`aufile`, `sndfile`, ya da pjsua2 Python ile özel medya portu). Artısı: tünel yok, tamamen telefonun içinde. Eksisi: gerçek zamanlı çift yönlü ses borulaması daha çok mühendislik ister, NAT/RTP ayarları.
+### B) SIP trunk + telefonun kendisi SIP uç noktası ✅ UYGULANDI
+proot Ubuntu içinde `baresip`, SIP hesabı yerli operatörden (Zadarma). Ses giriş/çıkışı ALSA `file` eklentisiyle `mic.raw`/`spk.raw` FIFO'larına bağlanır (`.asoundrc`, `scripts/proot/baresip-kur.sh`); komutlar `ctrl_tcp:4444` üzerinden. Artısı: tünel yok, tamamen telefonun içinde. Ses gidiş hattı sağlığı: besleyici kendi kendine iyileştirme + kanal gözcüsü + `ses-testi.sh` (yukarıdaki bölüme bak).
 
 ### C) WhatsApp/Telegram sesli arama
 Resmî API'ler botlara sesli arama açmaz (WhatsApp Business Calling API kısıtlı/bölgesel). Şimdilik yok.
 
-**Karar:** Faz 3'te A ile başla (Twilio Media Streams adaptörü + cloudflared), motor zaten hazır. B'yi maliyet/lokal numara isteği doğarsa ekle.
+**Karar:** Önce A önerilmişti; pratikte **B (baresip + Zadarma SIP) uygulandı** ve çalışıyor. A (Twilio/Telnyx) yedek seçenek olarak duruyor; motor taşıyıcıdan bağımsız olduğu için ikisi de `beyin/kopru/` altına ayrı dosya olarak eklenebilir.
 
 ## Hukuk ve etik (Türkiye)
 

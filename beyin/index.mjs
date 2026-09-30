@@ -6,6 +6,7 @@ import https from 'node:https';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ayarYukle, tokenAl, logOlustur, ASISTAN_HOME } from '../ortak/ayar.mjs';
 import { LLMIstemci } from './llm.mjs';
@@ -60,6 +61,13 @@ function cerezler(req) {
   );
 }
 
+/** Sabit zamanlı token karşılaştırma (zamanlama saldırısına karşı). */
+function tokenEslesir(a, b) {
+  const x = crypto.createHash('sha256').update(String(a || '')).digest();
+  const y = crypto.createHash('sha256').update(String(b || '')).digest();
+  return crypto.timingSafeEqual(x, y);
+}
+
 function agAdresleri() {
   const liste = [];
   for (const [ad, arayuzler] of Object.entries(os.networkInterfaces())) {
@@ -99,7 +107,7 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
 
   const yetkiliMi = (req, url) => {
     const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    return bearer === token || url.searchParams.get('token') === token || cerezler(req).asistan_token === token;
+    return tokenEslesir(bearer, token) || tokenEslesir(url.searchParams.get('token'), token) || tokenEslesir(cerezler(req).asistan_token, token);
   };
 
   async function api(req, res, url) {
@@ -187,6 +195,11 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
         const s = await sipKoprusu.ara({ gorev: g, numara });
         gorevler.guncelle(id, { durum: 'araniyor', mod: 'voip', kisi: { ...g.kisi, numara } });
         return { ...s, brifing: { acilis: g.acilis, konusma_noktalari: g.konusma_noktalari, sinirlar: g.sinirlar } };
+      }
+      if (M === 'POST' && eylem === 'sil') {
+        // Gizlilik: kullanıcı görev kaydını (transkript dahil) kalıcı olarak silebilmeli
+        gorevler.sil(id);
+        return { silindi: id };
       }
       if (M === 'POST' && eylem === 'sonuc') {
         const sonuc = { basarili: Boolean(govde.basarili), ozet: String(govde.ozet || ''), kararlar: govde.kararlar || [], takip: govde.takip || [], bitis: new Date().toISOString(), sebep: 'elle-girildi' };

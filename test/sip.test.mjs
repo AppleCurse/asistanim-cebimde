@@ -125,3 +125,32 @@ test('SIP: besleyici yazma hatasını yutmaz; sayar, loglar ve fd\'yi yeniden a�
 
   fs.rmSync(tmp, { recursive: true, force: true });
 });
+
+test('SIP: arama kapısı reddi HTTP uyumlu 423 kodu taşır', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sip-kod-'));
+  const kopru = sahteKopru({ tmp });
+  await assert.rejects(
+    () => kopru.ara({ numara: '05550000000' }),
+    (e) => e.kod === 423,
+    'kapı reddi kod: 423 olmalı',
+  );
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('SIP: eşzamanlı arama engeli (çift çaldırma koruması)', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sip-kilit-'));
+  const kopru = sahteKopru({ tmp });
+  fs.writeFileSync(kopru.sesKapisiYolu, '');
+  kopru._aramaKilit = true; // çağrı sürüyor taklidi
+  await assert.rejects(
+    () => kopru.ara({ numara: '05550000000' }),
+    (e) => e.kod === 409 && /zaten/i.test(e.message),
+  );
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('SIP: NetstringAyristirici ayrıştırılamayan akışta sonsuz büyümez', () => {
+  const ayristirici = new NetstringAyristirici(() => {});
+  for (let i = 0; i < 40; i++) ayristirici.besle(Buffer.alloc(8192, 0x78)); // 'x' dolu ≈320 KB
+  assert.ok(ayristirici.tampon.length <= 256 * 1024, `tampon tavanı aşılıyor: ${ayristirici.tampon.length}`);
+});
