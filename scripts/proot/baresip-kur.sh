@@ -83,6 +83,7 @@ audio_alert alsa,spk
 module_path /usr/lib/baresip/modules
 module stdio.so
 module contact.so
+module menu.so
 module alsa.so
 module g711.so
 module account.so
