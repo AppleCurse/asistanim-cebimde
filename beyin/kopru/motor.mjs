@@ -10,6 +10,35 @@
 
 const BITIS_ETIKETI = '[GORUSME_BITTI]';
 
+/** Whisper tarzı STT halüsinasyonları: sessiz/bozuk ses parçalarında uydurulan kalıplar.
+ *  Bu listeden biri geçen transkript "anlaşılan söz" sayılmaz, atılır (halüsinasyon filtresi). */
+export const HALUSINASYON_KALIPLARI = [
+  /altyaz/i,                                     // "altyazı", "altyazılar hazırlanmıştır"
+  /\bsubtitles?\b/i,
+  /izlediğiniz için/i,                            // "videoyu izlediğiniz için teşekkürler"
+  /videoyu izlediğiniz/i,
+  /kanalıma hoş geldiniz/i,
+  /abone ol(mayı|manızı) unut/i,                  // "abone olmayı unutmayın"
+  /beğen(mey|i)p (ve )?abone/i,
+  /\b(like and subscribe|please subscribe|subscribe to (my )?channel)\b/i,
+  /\bthanks for (watching|listening)\b/i,
+  /\b(subtitles|captions) (by|provided|brought to you)/i,
+  /(amara\.org|rev\.com|sonicbids)/i,
+  /\[(müzik|şarkı|music|alkış|gülüşme|gülüşmeler|ses efekti|nefes)\]/i,   // [Müzik], [Applause]
+  /\((müzik|şarkı|music|alkış|gülüşme|gülüşmeler|ses efekti|nefes|sessizlik)\)/i,
+  /^[♪♫♬\s]+$/,                                  // sadece nota
+  /♪/,
+  /https?:\/\/|www\./i,
+  /şarkı sözleri/i,
+];
+
+/** STT çıktısı halüsinasyon mu? (filtre: true → at) */
+export function halusinasyonMu(metin) {
+  const temiz = (metin || '').trim();
+  if (temiz.length < 2) return true;
+  return HALUSINASYON_KALIPLARI.some((kalip) => kalip.test(temiz));
+}
+
 export class Gorusme {
   constructor({ llm, gorevler, gorev = null, ayar, tasiyici, log, mod = 'tarayici-ses' }) {
     this.llm = llm;
@@ -22,7 +51,9 @@ export class Gorusme {
     this.mesajlar = [];
     this.transkript = [];
     this.aktif = false;
+    this.kapandi = false; // bitir() bir kez kapanışı yapsın; hiç başlamayan çağrı da görevi kapatmalı
     this.nesil = 0;
+    this.durum = null; // dusunuyor | dinliyor | konusuyor | bekliyor | kapaniyor | hata
     this.kuyruk = Promise.resolve();
     this.baslangic = null;
     this.zamanlayici = null;
@@ -49,8 +80,14 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
     }
   }
 
+  /** Durumu hem gorusme.durum'da tut hem taşıyıcıya bildir (taşımalar `gorusme.durum` okur). */
+  _durumVer(asama, ek = {}) {
+    this.durum = asama;
+    this.tasiyici.durum?.({ asama, ...ek });
+  }
+
   async baslat() {
-    if (this.aktif) return;
+    if (this.aktif || this.kapandi) return;
     this.aktif = true;
     this.baslangic = Date.now();
     if (this.gorev) this.gorevler.guncelle(this.gorev.id, { durum: 'araniyor', mod: this.mod });
@@ -79,17 +116,18 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
       this.aktif = true;
       this.baslangic = this.baslangic || Date.now();
     }
-    this.tasiyici.durum?.({ asama: 'dinliyor' });
+    this._durumVer('dinliyor');
     let metin = '';
     try {
       metin = await this.llm.yaziyaCevir(buffer, { mime, dil: 'tr' });
     } catch (hata) {
       this.log?.uyari(`STT hatası: ${hata.message}`);
-      this.tasiyici.durum?.({ asama: 'hata', mesaj: `Ses yazıya çevrilemedi: ${hata.message}` });
+      this._durumVer('hata', { mesaj: `Ses yazıya çevrilemedi: ${hata.message}` });
       return;
     }
-    if (!metin || metin.length < 2 || /altyaz[ıi]|subtitles?|izlediğiniz için/i.test(metin)) {
-      this.tasiyici.durum?.({ asama: 'bekliyor', mesaj: 'Anlaşılır bir şey duyulmadı' });
+    if (!metin || halusinasyonMu(metin)) {
+      this.log?.uyari(`STT halüsinasyonu filtrelendi: "${String(metin).slice(0, 80)}"`);
+      this._durumVer('bekliyor', { mesaj: 'Anlaşılır bir şey duyulmadı' });
       return;
     }
     await this.kullaniciKonustu(metin);
@@ -108,7 +146,7 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
       this.tasiyici.metin?.('karsi', kullaniciMetni, false);
     }
     this.mesajlar.push({ role: 'user', content: kullaniciMetni });
-    this.tasiyici.durum?.({ asama: 'dusunuyor' });
+    this._durumVer('dusunuyor');
 
     let icerik;
     try {
@@ -122,7 +160,7 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
     if (benimNesil !== this.nesil || !this.aktif) return; // kullanıcı araya girdi, bu yanıt bayat
 
     const bitiyor = icerik.includes(BITIS_ETIKETI);
-    const temiz = icerik.replace(BITIS_ETIKETI, '').trim();
+    const temiz = icerik.replaceAll(BITIS_ETIKETI, '').trim();
     this.mesajlar.push({ role: 'assistant', content: icerik });
     if (temiz) await this._soyle(temiz);
     if (bitiyor) await this.bitir('asistan-kapatti');
@@ -133,7 +171,7 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
     const sunucuSesi = this.mod === 'sunucu-ses';
     this.tasiyici.metin?.('asistan', metin, sunucuSesi);
     if (!sunucuSesi) return;
-    this.tasiyici.durum?.({ asama: 'konusuyor' });
+    this._durumVer('konusuyor');
     try {
       const ses = await this.llm.seslendir(metin);
       await this.tasiyici.sesCal?.(ses, 'audio/mpeg');
@@ -145,10 +183,13 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
   }
 
   async bitir(sebep = 'kullanici-kapatti') {
-    if (!this.aktif) return this.gorev;
+    // DİKKAT: `aktif` kontrolü burada YOK — çağrı hiç başlamadıysa da (aranan açmadı,
+    // meşgul, hat düşmedi) kapanış yapılmalı; yoksa görev 'araniyor'da sonsuza kadar takılır.
+    if (this.kapandi) return this.gorev;
+    this.kapandi = true;
     this.aktif = false;
     clearTimeout(this.zamanlayici);
-    this.tasiyici.durum?.({ asama: 'kapaniyor', sebep });
+    this._durumVer('kapaniyor', { sebep });
     let sonucGorev = this.gorev;
     if (this.gorev) {
       try {

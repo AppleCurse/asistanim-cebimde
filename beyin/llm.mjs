@@ -186,8 +186,9 @@ export class LLMIstemci {
           const veri = await y.json();
           return (veri.text || '').trim();
         }
-      } catch {
-        // Groq başarısızsa aşağıda 9router'ı dene
+      } catch (hata) {
+        // Groq başarısızsa aşağıda 9router'ı dene — ama sessizce yutma, logla
+        console.log(`[LLM] Groq STT başarısız (${hata.message}) — 9router deneniyor`);
       }
     }
 

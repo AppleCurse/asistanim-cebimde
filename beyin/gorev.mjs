@@ -40,8 +40,22 @@ export class GorevYoneticisi {
 
   kaydet(gorev) {
     gorev.guncellendi = new Date().toISOString();
-    fs.writeFileSync(this._yol(gorev.id), JSON.stringify(gorev, null, 2));
+    const yol = this._yol(gorev.id);
+    // Atomik yaz: yarım kalmış JSON (güç kesilmesi vb.) görevi bozmasın
+    const gecici = `${yol}.tmp`;
+    fs.writeFileSync(gecici, JSON.stringify(gorev, null, 2));
+    fs.renameSync(gecici, yol);
     return gorev;
+  }
+
+  /** Görev kaydını (brifing + transkript + sonuç) kalıcı olarak siler — gizlilik: kullanıcı kayıtları silebilmeli. */
+  sil(id) {
+    const yol = this._yol(id);
+    fs.rmSync(`${yol}.tmp`, { force: true }); // yarım yazım kalıntısı
+    if (!fs.existsSync(yol)) return false;
+    fs.rmSync(yol);
+    this.log?.bilgi(`görev kaydı silindi #${id} (transkript dahil)`);
+    return true;
   }
 
   al(id) {
@@ -129,19 +143,32 @@ kibarca özetleyip vedalaş ve yanıtının EN SONUNA tek satırda [GORUSME_BITT
   /** Transkriptten sonuç raporu üretir ve görevi kapatır. */
   async ozetle(gorev, { sebep = 'normal' } = {}) {
     const transkript = (gorev.transkript || []).map((t) => `${t.rol === 'asistan' ? 'ASİSTAN' : 'KARŞI TARAF'}: ${t.metin}`).join('\n');
-    const mesajlar = [
-      {
-        role: 'system',
-        content: `Bir telefon görüşmesinin transkriptini değerlendir. SADECE şu JSON'u döndür:
-{"basarili": true/false, "ozet": "2-3 cümle: ne konuşuldu, ne sonuç çıktı", "kararlar": ["alınan somut kararlar"], "takip": ["kullanıcının yapması gerekenler"], "not": "dikkat çeken şey veya null"}`,
-      },
-      { role: 'user', content: `Görev amacı: ${gorev.amac}\nBaşarı kriteri: ${gorev.basari_kriteri}\nBitiş sebebi: ${sebep}\n\nTRANSKRİPT:\n${transkript || '(boş)'}` },
-    ];
     let sonuc;
-    try {
-      sonuc = await this.llm.jsonSohbet(mesajlar);
-    } catch (hata) {
-      sonuc = { basarili: false, ozet: `Özet üretilemedi: ${hata.message}`, kararlar: [], takip: [], not: null };
+    if (!transkript) {
+      // Hiç konuşma olmadı (aranan açmadı, meşgul, hat düşmedi) — LLM'e sormaya gerek yok,
+      // dürüst kapanış yaz: kullanıcı "başarısız görüşme" sanrısına düşmesin.
+      const sebepler = {
+        'karsi-kapatti': 'Aranan kişi açmadı ya da çağrı başlamadan kapandı',
+        'sure-doldu': 'Süre doldu ama görüşme başlamadı',
+        'baglanti-koptu': 'Bağlantı koptu, görüşme başlamadı',
+        'yeniden-baslatildi': 'Görüşme yeniden başlatıldı (kayıt yok)',
+      };
+      sonuc = { basarili: false, ozet: sebepler[sebep] || 'Görüşme başlamadan kapandı', kararlar: [], takip: [], not: null };
+    } else {
+      const mesajlar = [
+        {
+          role: 'system',
+          content: `Bir telefon görüşmesinin transkriptini değerlendir. SADECE şu JSON'u döndür:
+  {"basarili": true/false, "ozet": "2-3 cümle: ne konuşuldu, ne sonuç çıktı", "kararlar": ["alınan somut kararlar"], "takip": ["kullanıcının yapması gerekenler"], "not": "dikkat çeken şey veya null"}`,
+        },
+        { role: 'user', content: `Görev amacı: ${gorev.amac}\nBaşarı kriteri: ${gorev.basari_kriteri}\nBitiş sebebi: ${sebep}\n\nTRANSKRİPT:\n${transkript}` },
+      ];
+
+      try {
+        sonuc = await this.llm.jsonSohbet(mesajlar);
+      } catch (hata) {
+        sonuc = { basarili: false, ozet: `Özet üretilemedi: ${hata.message}`, kararlar: [], takip: [], not: null };
+      }
     }
     sonuc.bitis = new Date().toISOString();
     sonuc.sebep = sebep;

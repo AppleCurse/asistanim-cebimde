@@ -1,7 +1,7 @@
 // Servis çalışanı: paneli "ana ekrana kurulabilir" yapar ve statik dosyaları önbelleğe alır.
 // API ve WebSocket trafiğine dokunmaz (her zaman ağ).
 const ONBELLEK = 'asistan-v1';
-const STATIK = ['/statik/stil.css', '/statik/panel.js', '/statik/telefon.js', '/statik/ikon-192.png', '/statik/ikon-512.png', '/manifest.webmanifest'];
+const STATIK = ['/statik/stil.css', '/statik/panel.js', '/statik/telefon.js', '/statik/ikon-180.png', '/statik/ikon-192.png', '/statik/ikon-512.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(ONBELLEK).then((c) => c.addAll(STATIK)).then(() => self.skipWaiting()));

@@ -58,7 +58,7 @@ panel/CLI ─POST /api/sohbet─► Asistan.yanitla()
 panel "Görüşmeyi başlat" ─► taşıyıcı seçimi
    tarayici : WebSocket /ws/telefon → Gorusme motoru (motor.mjs)
    hucresel : Beden /telefon/ara (sadece hattı açar; brifing ekranda "kopya kâğıdı")
-   voip     : Faz 3 (docs/telefon-gorusmesi.md)
+   voip     : baresip/SIP köprüsü (sip.mjs, ctrl_tcp + ALSA FIFO; docs/telefon-gorusmesi.md)
 Gorusme motoru: açılış cümlesi → [ses→STT] → LLM(brifing kişiliği) → [TTS→ses] … → [GORUSME_BITTI]
    └─ GorevYoneticisi.ozetle(): {basarili, ozet, kararlar, takip} → görev kapanır → hafiza.md'ye not
 ```

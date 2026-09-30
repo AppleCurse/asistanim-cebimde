@@ -29,13 +29,13 @@
 - [ ] Uyandırma kelimesi (yerel, hafif) → `dinle` → yanıt; hoparlör modunda ev asistanı
 - [ ] Sesli bildirim: gelen SMS/arama kayıtlarını özetleyip söyleme
 
-## Faz 3 — VoIP köprüsü (gerçek arama)
-- [ ] Taşıyıcı: Twilio Media Streams adaptörü (μ-law 8 kHz ↔ PCM, sunucu VAD, barge-in)
-- [ ] Tünel: cloudflared (Termux arm64) veya küçük VPS röle
-- [ ] Arama akışı: panelden onay → dış arama → görüşme → özet → bildirim + SMS raporu
+## Faz 3 — VoIP köprüsü (gerçek arama) 🔄
+- [x] **SIP trunk + baresip (proot) — UYGULANDI:** Zadarma hesabı, ALSA dosya köprüsü (`mic.raw`/`spk.raw` FIFO), duvar saatine kilitli PCM besleyici, adaptif VAD + yankı kapısı + barge-in, ctrl_tcp arama kontrolü
+- [x] Ses kanalı gözcüsü (`⚠️ SES KANALI ÖLÜ`), besleyici kendi kendine iyileştirme, arama kapısı (ses testi yeşil olmadan çaldırmaz) + `scripts/termux/ses-testi.sh` teşhisi
+- [x] Arama akışı: panelden onay → VoIP dış arama → görüşme → özet → hafıza (görev kartı: 📳 VoIP'tan ara)
 - [ ] Sesli mesaj/robot menü tespiti (IVR): DTMF gönderme aracı
-- [ ] Alternatif: SIP trunk + baresip (proot) araştırması
-- [ ] Rıza/kayıt politikası ayarı; transkript saklama süresi
+- [ ] Alternatif: Twilio Media Streams adaptörü (μ-law 8 kHz ↔ PCM) — yedek taşıyıcı
+- [ ] Rıza/kayıt politikası ayarı; transkript saklama süresi (şimdilik: transkript silinebilir — görev kartı "Kaydı sil")
 
 ## Faz 4 — Yaşam
 - [ ] Zamanlayıcılar: "yarın 9'da ara", tekrarlı görevler; görev kuyruğu ve yeniden deneme

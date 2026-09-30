@@ -54,7 +54,7 @@ Kısacası: **"asistanım cebimde"** — ama asistan aslında evdeki eski telefo
 ### Kimin için?
 - Elinde atıl bir Android telefon olan ve "bu bir işe yarasın" diyen herkes.
 - Kendi yapay zekâ asistanını **kendi cihazında** barındırmak isteyen (verilerin telefonunda kalır; yalnızca LLM istekleri seçtiğin sağlayıcıya gider).
-- Randevu alma, teyit, sipariş gibi telefon işlerini asistana devretmek isteyen (bkz. [§3](#3-neler-yapamaz-dürüst-sınırlar): bu kısım VoIP hattı ister, yol haritasında).
+- Randevu alma, teyit, sipariş gibi telefon işlerini asistana devretmek isteyen (bkz. [§3](#3-neler-yapamaz-dürüst-sınırlar): bu kısım VoIP hattı ister — SIP/baresip köprüsü hazır).
 
 ---
 
@@ -84,7 +84,9 @@ Bunlara ek olarak:
 
 - **Sesli sohbet:** Panelin 📞 Telefon sayfasından asistanla **konuşarak** sohbet edersin (cebindeki telefonun mikrofonu ve hoparlörüyle, ücretsiz).
 - **Görüşme provası:** Planlanan bir görevi önce sen "karşı taraf" olarak oynayıp asistanın nasıl konuşacağını dinlersin.
+- **VoIP'tan arama (asistan konuşur):** Görev kartındaki **📳 VoIP'tan ara** ile asistan numarayı internet hattından (SIP/baresip) arar ve kendi sesiyle konuşur. Ses kanalı sağlığı `ses-testi.sh` ile doğrulanır; test yeşil olmadan arama açılmaz.
 - **Hattan çevirme:** Görev için eski telefonun SIM'inden numarayı çevirir, konuşma notlarını ekranında gösterir; konuşmayı sen yaparsın, sonucu girersin, hafızaya yazılır.
+- **Kayıt silme:** Her görev kartındaki **🗑 Kaydı sil** ile brifing + transkript kalıcı olarak silinir (mahremiyet: ses kaydı zaten saklanmaz, sadece metin transkripti durur).
 - **Kalıcı hafıza:** `~/.asistan/hafiza.md` — düz metin; sen de elle düzenleyebilirsin.
 - **Her yerden yönetim:** Aynı Wi-Fi'de doğrudan; dışarıdan Tailscale ile; kod/terminal/masaüstü için [9remote](https://github.com/decolua/9remote).
 
@@ -92,7 +94,7 @@ Bunlara ek olarak:
 
 ## 3. Neler yapamaz? (dürüst sınırlar)
 
-- **Eski telefonun SIM'iyle "konuşamaz".** Root'suz Android, uygulamalara çağrı sesini vermez: asistan numarayı çevirebilir ama hatta kendi sesini basamaz, karşı tarafı duyamaz. Bu Android'in kısıtı, kodun değil. Asistanın **gerçekten arayıp konuşması** için ses internet hattından (VoIP: Twilio/Telnyx ya da yerli SIP) geçer — konuşma motoru hazır ve test edildi, **hat bağlantısı Faz 3'te**. Ayrıntı, maliyet ve seçenekler: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
+- **Eski telefonun SIM'iyle "konuşamaz".** Root'suz Android, uygulamalara çağrı sesini vermez: asistan numarayı çevirebilir ama hatta kendi sesini basamaz, karşı tarafı duyamaz. Bu Android'in kısıtı, kodun değil. Asistanın **gerçekten arayıp konuşması** için ses internet hattından (VoIP/SIP) geçer — **baresip/SIP köprüsü entegre** (Zadarma; ses kanalı gözcüsü + arama kapısı + `ses-testi.sh` teşhisi). Ayrıntı, maliyet ve seçenekler: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
 - **Gerçek cihazda canlı doğrulandı:** Redmi Note 8 (Snapdragon 665, 4 GB RAM, Android 10/11 MIUI) üzerinde Termux:API donanım entegrasyonu (kamera, mikrofon, pil, Android TTS), 9router arka plan servisi ve HTTPS web paneli canlı olarak çalıştırılıp doğrulandı.
 - **Çevrimdışı düşünemez.** Beyin buluttaki LLM'dir; internet yoksa sadece "beden" (kamera, TTS, bildirim) çalışır.
 - **Kamerayı ekran kilitliyken bazı MIUI sürümleri vermez.** Çözüm §10'da.
@@ -125,7 +127,7 @@ Bunlara ek olarak:
 | ✋ **Eller** | Telefon, SMS, bildirim, pano, konum, fener | Termux:API |
 | ❤️ **Kalp** | Ölürse doğ, açılışta kalk, uyuma | `servis.sh` döngüsü + Termux:Boot + wake-lock |
 | 🔌 **Sinir sistemi** | Her yerden içeri | Panel (token) + 9remote (P2P, fiziksel onay) + sshd |
-| 📞 **Köprü** | Telefon görüşmesi motoru | `beyin/kopru/` — bugün tarayıcı, yarın VoIP |
+| 📞 **Köprü** | Telefon görüşmesi motoru | `beyin/kopru/` — tarayıcı + VoIP/SIP (baresip) |
 
 Akış, bir örnekle: Sen panelden *"etrafa bak"* yazarsın → **Beyin** LLM'e mesajı ve araç listesini gönderir → LLM `bak` aracını ister → Beyin **Beden**'e `POST /kamera/cek` der → Beden `termux-camera-photo` çalıştırır, ffmpeg ile 1280 px'e küçültür, base64 döner → Beyin görüntüyü LLM'e "işte gördüğün" diye verir → LLM anlatır → panelde yanıt + fotoğraf.
 
@@ -151,7 +153,7 @@ Derinlemesine: [docs/mimari.md](docs/mimari.md)
 ### Hesaplar
 - **Bir LLM sağlayıcısı.** 9router'ın panelinden ücretsiz katmanlar bağlanabiliyor (OpenCode Free kayıtsız; Kiro; Vertex kredisi…) ya da kendi OpenAI / Anthropic / Gemini / DeepSeek / Groq anahtarın. Para ödemeden başlanabilir.
 - Sesli görüşmede sunucu sesi istersen 9router'a bir STT/TTS sağlayıcısı (Whisper, Gemini, Groq, ElevenLabs…) — **zorunlu değil**, cebindeki telefonun kendi tanıma/okuma motoru ücretsiz çalışır.
-- Gerçek telefon araması (Faz 3) için Twilio/Telnyx veya yerli SIP hesabı — şimdilik gerekmez.
+- Gerçek arama (VoIP) için SIP hesabı (ör. Zadarma) gerekir; `.env`'ye `SIP_*` bilgilerini yaz, `bash scripts/proot/baresip-kur.sh` ile yapılandır. Ayrıntı: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
 
 ---
 
@@ -337,7 +339,7 @@ Depo `/root/asistanim-cebimde`, ayarlar `/root/.asistan` olarak Ubuntu'nun için
 |---|---|
 | **Yaşam belirtileri** | Beden durumu (termux/mock), pil % ve sıcaklık, seçili LLM, kulak/ağız sağlayıcısı, çalışma süresi, bellek, ağ adresleri. Dakikada bir yenilenir. |
 | **Sohbet** | Asistanla yazışma. Araç kullanırsa altına küçük gri "⚙ bak → hatirla" notu düşer. **👁 Bak** anında fotoğraf çekip gösterir; **🔊 Söylet** yazdığını eski telefonun hoparlöründen söyletir; **Sohbeti sıfırla** bağlamı temizler (hafıza silinmez). |
-| **Görüşme görevleri** | Talimat yaz (+ isteğe bağlı numara) → **Planla** → brifing kartı çıkar: başlık, kişi, amaç, konuşma noktaları, eksik bilgi. Kart üstünde: **📞 Tarayıcıdan görüş**, **📱 Hattan çevir**, **İptal**. Bitmiş görevlerde sonuç ve takip listesi. |
+| **Görüşme görevleri** | Talimat yaz (+ isteğe bağlı numara) → **Planla** → brifing kartı çıkar: başlık, kişi, amaç, konuşma noktaları, eksik bilgi. Kart üstünde: **📞 Tarayıcıdan görüş**, **📳 VoIP'tan ara**, **📱 Hattan çevir**, **İptal**, **🗑 Kaydı sil** (transkript dahil). Bitmiş görevlerde sonuç ve takip listesi. |
 | **Hafıza** | `hafiza.md` içeriği — asistanın kalıcı notları. |
 
 ### 7.2 Sohbette neler diyebilirsin
@@ -351,7 +353,8 @@ Görüntüyle ilgili istekler (yüz, yazı, nesne) LLM'in görüntü desteğine 
 1. **Talimat:** *"Diş hekimi Dr. Aylin'i ara, Perşembe 15:00 randevumu bir sonraki haftaya aynı saate al. Olmazsa sabah saatleri de olur. Ücret konuşma."*
 2. **Brifing:** LLM bunu yapılandırır: kişi (`Dr. Aylin`, numara rehberden veya senden), amaç, konuşma noktaları (selamla-kendini tanıt-talebi ilet-alternatif sor-teyit et), kabul edilebilir sonuçlar, **sınırlar** (ücret konuşma, başka randevu verme), üslup, açılış cümlesi, başarı kriteri, eksik bilgi. Eksik bilgi varsa durum `taslak` olur, panelde kırmızı yazar → tamamla.
 3. **Onay ve mod:**
-   - **📞 Tarayıcıdan görüş** — Telefon sayfası açılır; asistan açılış cümlesini söyler; **sen karşı taraf rolünde** konuşursun. Prova ve test için. (Gerçek hat için Faz 3 — bkz. §3.)
+   - **📞 Tarayıcıdan görüş** — Telefon sayfası açılır; asistan açılış cümlesini söyler; **sen karşı taraf rolünde** konuşursun. Prova ve test için.
+   - **📳 VoIP'tan ara** — asistan numarayı SIP hattından arar ve **kendi sesiyle konuşur** (baresip köprüsü). Ses kanalı doğrulanmadıysa arama kapalıdır: `bash scripts/termux/ses-testi.sh`.
    - **📱 Hattan çevir** — eski telefonun SIM'i numarayı çevirir (izin `telefon: true` olmalı), ekranda brifing "kopya kâğıdı" çıkar, konuşmayı sen yaparsın. Bitince görev kartından sonucu gir (API: `POST /api/gorevler/:id/sonuc`).
 4. **Sonuç:** Görüşme bitince LLM transkriptten `{başarılı mı, özet, kararlar, takip}` çıkarır; görev `tamamlandi`/`basarisiz` olur; hafızaya "Görüşme #… : özet" düşer.
 
@@ -428,7 +431,7 @@ npm run modeller                 # 9router'daki modeller
     "hafizaLimiti": 6000            // sistem mesajına eklenen hafıza karakteri
   },
   "arama": {
-    "varsayilanMod": "tarayici",    // tarayici | hucresel | voip (voip: Faz 3)
+    "varsayilanMod": "tarayici",    // tarayici | hucresel | voip (baresip/SIP — bkz. docs/telefon-gorusmesi.md)
     "aiOlduguSoylensin": true,      // görüşme başında "dijital asistanım" desin
     "maksSure": 900                 // saniye; dolunca görüşme kapanır ve özetlenir
   }
@@ -473,6 +476,7 @@ run/             pid dosyaları                 tls/             cert.pem key.pe
 cd ~/asistanim-cebimde
 bash scripts/termux/baslat.sh              # hepsini başlat (zaten çalışanı atlar)
 bash scripts/termux/durum.sh               # kim yaşıyor + sağlık uçları + panel adresi/token
+bash scripts/termux/ses-testi.sh           # ses gidiş hattı teşhisi (telefonu ÇALDIRMADAN; arama kapısını açar/kapar)
 bash scripts/termux/durdur.sh              # hepsini durdur (wake-lock'u da bırakır)
 bash scripts/termux/durdur.sh beyin        # sadece birini
 tail -f ~/.asistan/log/beyin.log           # canlı log (beden.log, 9router.log, boot.log)
@@ -559,7 +563,7 @@ asistanim-cebimde/
 │   ├── proot/ubuntu-kur.sh   Ubuntu + Node 22 + 9remote  (icerde-kur.sh Ubuntu içinde çalışır)
 │   ├── proot/9remote.sh      Ubuntu içinde 9remote (depo ve ~/.asistan bağlı)
 │   └── dev/sahte-ortam.mjs   telefon olmadan tam ortam; dev/paketle.sh sürüm paketi
-├── test/                     node:test — sahte 9router + sahte cihaz ile uçtan uca (22 test)
+├── test/                     node:test — sahte 9router + sahte cihaz ile uçtan uca (40 test)
 ├── docs/                     mimari, kurulum, telefon görüşmesi, yol haritası, donanım notları
 ├── .github/workflows/        surum.yml: release yayınlanınca test + paket + dosya yükleme
 ├── AGENTS.md                 bu depoda çalışan yapay zekâ ajanları için kurallar
@@ -585,8 +589,10 @@ asistanim-cebimde/
 | `POST /api/pil` | pil |
 | `GET/POST /api/gorevler` | listele / `{talimat, numara?}` planla |
 | `GET/POST /api/gorevler/:id` | görev / güncelle (`durum`, `kisi`, `mod`, …) |
+| `POST /api/gorevler/:id/voip-ara` | VoIP'tan ara (asistan konuşur; ses kanalı kapalıysa 423) |
 | `POST /api/gorevler/:id/hucresel-ara` | hattan çevir, brifing döner |
 | `POST /api/gorevler/:id/sonuc` `{basarili, ozet, kararlar?, takip?}` | elle sonuç |
+| `POST /api/gorevler/:id/sil` | görev kaydını + transkripti kalıcı sil (mahremiyet) |
 | `WS /ws/telefon?token=` | görüşme: `{tip:'baslat', gorevId?, mod}` → `{tip:'metin'…}`, ses ikili çerçeve; `{tip:'metin'}`, `{tip:'ses', mime}`+binary, `{tip:'bitir'}` |
 
 ### Beden (`:20130`, `Authorization: Bearer <beden.token>`)
@@ -606,7 +612,7 @@ Yanıt biçimi: `{ "tamam": true, "sonuc": … }` ya da `{ "tamam": false, "hata
 ```bash
 git clone https://github.com/AppleCurse/asistanim-cebimde && cd asistanim-cebimde
 npm install
-npm test                           # 22 test: beden API + izinler, ajan döngüsü, görüntü aktarımı,
+npm test                           # 40 test: beden API + izinler, ajan döngüsü, görüntü aktarımı,
                                    # brifing, hücresel arama, WebSocket görüşme + özet, yetki
 node scripts/dev/sahte-ortam.mjs   # sahte 9router + sahte cihaz + gerçek beyin
                                    # → http://localhost:20131/?token=dev
@@ -620,10 +626,10 @@ Sürüm çıkarmak: `package.json` sürümünü artır → commit → `gh releas
 
 ## 15. Yol haritası
 
-- ✅ **Faz 0 — İskelet (v0.1.0):** beden, beyin, 16 araç, hafıza, görev sistemi, görüşme motoru + tarayıcı yazılım telefonu, PWA panel, Termux yaşam döngüsü scriptleri, proot/9remote kurulumu, 22 test, indirilebilir sürüm.
+- ✅ **Faz 0 — İskelet (v0.1.0):** beden, beyin, 16 araç, hafıza, görev sistemi, görüşme motoru + tarayıcı yazılım telefonu, PWA panel, Termux yaşam döngüsü scriptleri, proot/9remote kurulumu, indirilebilir sürüm.
 - ✅ **Faz 1 — Telefonda canlandırma (Doğrulandı):** gerçek Redmi Note 8 üzerinde Termux:API donanım erişimi (kamera, pil, TTS), 9router arka plan servisi entegrasyonu, bellek optimizasyonu (512MB RAM sınırı), Termux:Boot otomatik açılış kancası ve HTTPS web paneli canlı test edilip doğrulandı.
 - ⏳ **Faz 2 — Duyular:** kayıtlı kişilerle yüz tanıma, QR → aksiyon, OCR akışları, hareket/ses tetikleyicileri ("kim geldi?"), uyandırma kelimesi, gelen SMS/arama özetini söyleme.
-- 🔄 **Faz 3 — VoIP köprüsü (gerçek arama):** Baresip SIP (Zadarma) adaptörü, ALSA dosya köprüsü, duvar saatine kilitli PCM besleyicisi, yankı kapısı ve adaptif VAD, çift yönlü ses akışı (Edge-TTS Emel + Groq Whisper), ctrl_tcp arama kontrolü entegre edildi.
+- 🔄 **Faz 3 — VoIP köprüsü (gerçek arama):** Baresip SIP (Zadarma) adaptörü, ALSA dosya köprüsü, duvar saatine kilitli PCM besleyicisi, yankı kapısı ve adaptif VAD, çift yönlü ses akışı (Edge-TTS Emel + Groq Whisper), ctrl_tcp arama kontrolü entegre edildi. Ses güvenilirliği katmanı: besleyici kendi kendine iyileştirme, `⚠️ SES KANALI ÖLÜ` gözcüsü, **arama kapısı** (ses testi yeşil olmadan çaldırmaz) ve `scripts/termux/ses-testi.sh` teşhisi. Panelde 📳 VoIP'tan arama + 🗑 kayıt silme.
 - ⏳ **Faz 4 — Yaşam:** zamanlayıcılar ("yarın 9'da ara"), tekrarlı görevler, sabah özeti, hafıza konsolidasyonu, push bildirimleri, aile profilleri, isteğe bağlı yerel küçük model.
 
 Madde madde: [docs/yol-haritasi.md](docs/yol-haritasi.md)
@@ -638,7 +644,7 @@ Madde madde: [docs/yol-haritasi.md](docs/yol-haritasi.md)
 
 **Cebimdeki telefonda uygulama olarak çalışıyor mu?** Evet, PWA: "⬇ Kur" ile ana ekrana iner, tam ekran açılır. Mağazadan yüklenen bir APK değildir.
 
-**Bakkalı arayıp konuşur mu?** Hedef bu; **bugün** tarayıcıdan prova yapar ve hattan çevirir, konuşmayı sen yaparsın. Kendi başına konuşması VoIP hattıyla (Faz 3). Neden ve nasıl: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
+**Bakkalı arayıp konuşur mu?** Evet — SIP hattı (ör. Zadarma) tanımlıysa asistan **kendi sesiyle** VoIP'tan arar (paneldeki **📳 VoIP'tan ara**). Hat yoksa tarayıcıdan prova yapar veya hattan çevirir, konuşmayı sen yaparsın. Neden ve nasıl: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
 
 **Root gerekiyor mu?** Hayır. Her şey Termux + Termux:API ile, root'suz.
 

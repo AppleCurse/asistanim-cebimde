@@ -234,3 +234,22 @@ test('telefon köprüsü: yetkisiz WebSocket reddedilir', async () => {
   });
   assert.match(String(hata.message), /401/);
 });
+
+test('görev: kayıt silme — transkript dahil dosya yok olur', async () => {
+  const { veri: g } = await api('/gorevler', { talimat: 'Silinmek üzere test görevi' });
+  const sil = await api(`/gorevler/${g.id}/sil`, {});
+  assert.equal(sil.durum, 200);
+  assert.equal(sil.veri.silindi, g.id);
+  const yok = await api(`/gorevler/${g.id}`);
+  assert.equal(yok.durum, 404, 'silinen görev bir daha okunamamalı');
+});
+
+test('voip-ara: ses testi yeşil değilken arama ÇALDIRILMAZ (423)', async () => {
+  const { veri: g } = await api('/gorevler', { talimat: 'Kapı testi araması', numara: '05550000000' });
+  const { durum, veri } = await api(`/gorevler/${g.id}/voip-ara`, {});
+  assert.equal(durum, 423);
+  assert.match(veri.hata, /ses testi/);
+  // Görev araniyor'a geçmemeli
+  const { veri: taze } = await api(`/gorevler/${g.id}`);
+  assert.notEqual(taze.durum, 'araniyor', 'kapı kapalıyken görev araniyor olmamalı');
+});

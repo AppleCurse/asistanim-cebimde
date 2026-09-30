@@ -102,8 +102,14 @@ EOF
 chmod 600 "$HEDEF_HOME/.baresip/accounts"
 
 # 4. FIFO / Ham ses borularını hazırla
-rm -f "$HEDEF_TMP/mic.raw" "$HEDEF_TMP/spk.raw"
-mkfifo "$HEDEF_TMP/mic.raw" "$HEDEF_TMP/spk.raw"
+#    VAR OLAN BORULARI ASLA YENİDEN YARATMA: rm+mkfifo inode'u değiştirir, beyin (node)
+#    eski boruya yapışık kalır ve ses gidiş hattı sessizce ölür (bkz. docs/telefon-gorusmesi.md).
+for f in mic.raw spk.raw; do
+  if [[ ! -p "$HEDEF_TMP/$f" ]]; then
+    rm -f "$HEDEF_TMP/$f"
+    mkfifo "$HEDEF_TMP/$f"
+  fi
+done
 chmod 666 "$HEDEF_TMP/mic.raw" "$HEDEF_TMP/spk.raw"
 
 echo "✅ Baresip ve ALSA kurulumu başarıyla tamamlandı."
