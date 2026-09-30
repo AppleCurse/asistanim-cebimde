@@ -91,7 +91,11 @@ export function derinBirlestir(hedef, kaynak) {
 
 export function dizinleriHazirla() {
   for (const d of [ASISTAN_HOME, VERI_DIZINI, LOG_DIZINI, GOREV_DIZINI, SOHBET_DIZINI]) {
-    fs.mkdirSync(d, { recursive: true, mode: 0o700 });
+    try {
+      fs.mkdirSync(d, { recursive: true, mode: 0o700 });
+    } catch {
+      // Kısıtlı ortamlarda veya testlerde sessizce geç
+    }
   }
 }
 

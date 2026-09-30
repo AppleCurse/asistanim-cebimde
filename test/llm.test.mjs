@@ -64,6 +64,38 @@ test('LLMIstemci.seslendir: ElevenLabs yapılandırıldığında doğru API ça�
   }
 });
 
+test('LLMIstemci.seslendir: aynı metin ikinci kez çağrıldığında önbellekten anında döner', async () => {
+  const orijinalFetch = globalThis.fetch;
+  let cagriSayisi = 0;
+
+  globalThis.fetch = async () => {
+    cagriSayisi++;
+    return {
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => new TextEncoder().encode('onbellek-mp3').buffer,
+    };
+  };
+
+  const sahteTelemetri = { yaz: () => {} };
+
+  try {
+    const istemci = new LLMIstemci({
+      elevenlabsApiKey: 'el-key-cache',
+      ttsSaglayici: 'elevenlabs',
+      telemetry: sahteTelemetri,
+    });
+
+    const res1 = await istemci.seslendir('Aynı ses metni');
+    const res2 = await istemci.seslendir('Aynı ses metni');
+    assert.equal(res1.toString(), 'onbellek-mp3');
+    assert.equal(res2.toString(), 'onbellek-mp3');
+    assert.equal(cagriSayisi, 1, 'ikinci çağrıda ağ isteği yapılmamalı, önbellekten dönmeli');
+  } finally {
+    globalThis.fetch = orijinalFetch;
+  }
+});
+
 test('LLMIstemci.seslendir: ElevenLabs başarısız olduğunda yedek motora düşer', async () => {
   const orijinalFetch = globalThis.fetch;
   let elevenlabsCagrildi = false;

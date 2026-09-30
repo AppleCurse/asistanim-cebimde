@@ -154,3 +154,25 @@ test('SIP: NetstringAyristirici ayrıştırılamayan akışta sonsuz büyümez',
   for (let i = 0; i < 40; i++) ayristirici.besle(Buffer.alloc(8192, 0x78)); // 'x' dolu ≈320 KB
   assert.ok(ayristirici.tampon.length <= 256 * 1024, `tampon tavanı aşılıyor: ${ayristirici.tampon.length}`);
 });
+
+test('SIP: _spkFdYenidenAc spk.raw için taze fd açar ve _temizle fd/stream temizliğini eksiksiz yapar', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sip-spk-'));
+  const spkYolu = path.join(tmp, 'spk.raw');
+  fs.writeFileSync(spkYolu, Buffer.alloc(640));
+
+  const kopru = sahteKopru({ tmp });
+  const basarili = kopru._spkFdYenidenAc('test');
+  assert.ok(basarili, 'spk.raw başarıyla açılmalı');
+  assert.notEqual(kopru.outFifoFd, null, 'outFifoFd tanımlı olmalı');
+
+  // Dinleyici akışı taklidi
+  kopru.outFifoStream = fs.createReadStream(null, { fd: kopru.outFifoFd, autoClose: true });
+
+  // Temizleme testi
+  kopru._temizle();
+  assert.equal(kopru.outFifoStream, null, 'outFifoStream null olmalı');
+  assert.equal(kopru.outFifoFd, null, 'outFifoFd null olmalı (sonraki aramada EBADF olmamalı)');
+
+  await new Promise((r) => setTimeout(r, 50));
+  fs.rmSync(tmp, { recursive: true, force: true });
+});

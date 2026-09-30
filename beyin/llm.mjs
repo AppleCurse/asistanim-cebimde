@@ -55,6 +55,7 @@ export class LLMIstemci {
     this.piperBin = process.env.PIPER_BIN || 'piper';
     this.promptUSDPer1K = Number(process.env.LLM_PROMPT_USD_PER_1K || 0);
     this.completionUSDPer1K = Number(process.env.LLM_COMPLETION_USD_PER_1K || 0);
+    this._ttsOnbellek = new Map();
   }
 
   _basliklar(ek = {}) {
@@ -263,6 +264,20 @@ export class LLMIstemci {
   async seslendir(metin, { model, ses, format = 'mp3' } = {}) {
     if (!metin || !metin.trim()) return Buffer.alloc(0);
     const sesSecimi = ses || this.ttsVoice || 'tr-TR-EmelNeural';
+    const onbellekAnahtari = `${metin.trim()}|${model || ''}|${sesSecimi}|${format}`;
+    if (this._ttsOnbellek?.has(onbellekAnahtari)) {
+      return this._ttsOnbellek.get(onbellekAnahtari);
+    }
+    const onbellekleVeDon = (buf) => {
+      if (buf && buf.length > 0 && this._ttsOnbellek) {
+        if (this._ttsOnbellek.size > 30) {
+          const ilk = this._ttsOnbellek.keys().next().value;
+          this._ttsOnbellek.delete(ilk);
+        }
+        this._ttsOnbellek.set(onbellekAnahtari, buf);
+      }
+      return buf;
+    };
 
     // 1. ElevenLabs: yüksek kaliteli doğal ses (öncelikli TTS veya anahtar tanımlıysa)
     const elevenlabsSecili = this.ttsSaglayici === 'elevenlabs' || (this.elevenlabsApiKey && !this.piperModel && this.ttsSaglayici !== 'edge-tts' && this.ttsSaglayici !== '9router');
@@ -292,7 +307,7 @@ export class LLMIstemci {
         const sesBuffer = Buffer.from(await y.arrayBuffer());
         if (sesBuffer && sesBuffer.length > 0) {
           this.telemetri?.yaz('tts', { motor: 'elevenlabs', karakter: metin.length });
-          return sesBuffer;
+          return onbellekleVeDon(sesBuffer);
         }
       } catch (hata) {
         console.log(`[TTS] ElevenLabs başarısız (${hata.message}) — yedek motora geçiliyor`);
@@ -314,7 +329,7 @@ export class LLMIstemci {
         });
         const sesBuffer = fs.readFileSync(cikti);
         fs.rmSync(cikti, { force: true });
-        if (sesBuffer.length) { this.telemetri?.yaz('tts', { motor: 'piper', karakter: metin.length }); return sesBuffer; }
+        if (sesBuffer.length) { this.telemetri?.yaz('tts', { motor: 'piper', karakter: metin.length }); return onbellekleVeDon(sesBuffer); }
       } catch { fs.rmSync(cikti, { force: true }); }
     }
 
@@ -334,7 +349,7 @@ export class LLMIstemci {
       });
       if (sesBuffer && sesBuffer.length > 0) {
         this.telemetri?.yaz('tts', { motor: 'edge-tts', karakter: metin.length });
-        return sesBuffer;
+        return onbellekleVeDon(sesBuffer);
       }
     } catch {
       // edge-tts kurulu değilse veya hata verirse fallback
@@ -347,7 +362,7 @@ export class LLMIstemci {
       body: JSON.stringify({ model: model || this.ttsModel, input: metin, voice: sesSecimi, response_format: format }),
     });
     this.telemetri?.yaz('tts', { motor: '9router', karakter: metin.length });
-    return Buffer.from(await y.arrayBuffer());
+    return onbellekleVeDon(Buffer.from(await y.arrayBuffer()));
   }
 }
 

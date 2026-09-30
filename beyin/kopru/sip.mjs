@@ -198,6 +198,32 @@ export class SipKoprusu {
     return false;
   }
 
+  /** spk.raw fd'sini ve ReadStream'ini kapatıp yoldan yeniden açar.
+   *  Node.js ReadStream yok edildiğinde fd'yi de kapattığından sonraki aramada
+   *  EBADF almamak ve Baresip ALSA yazma hattının (Broken pipe) kopmaması için
+   *  her çağrıda ve hata anında spk.raw temizden yeniden açılır. */
+  _spkFdYenidenAc(sebep = '') {
+    if (this.outFifoStream) {
+      try { this.outFifoStream.destroy(); } catch {}
+      this.outFifoStream = null;
+      this.outFifoFd = null;
+    } else if (this.outFifoFd != null) {
+      try { fs.closeSync(this.outFifoFd); } catch {}
+      this.outFifoFd = null;
+    }
+    try {
+      if (fs.existsSync(this.outFifoYolu)) {
+        this.outFifoFd = fs.openSync(this.outFifoYolu, fs.constants.O_RDWR);
+        this.log?.bilgi?.(`spk.raw fd yoldan yeniden açıldı${sebep ? ` (${sebep})` : ''}`);
+        return true;
+      }
+      this.log?.hata?.(`spk.raw yeniden açılamadı: yol yok (${this.outFifoYolu})`);
+    } catch (e) {
+      this.log?.hata?.(`spk.raw yeniden açılamadı: ${e.message}`);
+    }
+    return false;
+  }
+
   /** Arama kapısı: ses testi yeşil (scripts/termux/ses-testi.sh) olmadan arama ÇALDIRILMAZ.
    *  SES_KANALI_KAPISI=0 ortam değişkeni kapıyı tamamen açar (acil bypass). */
   _sesKapisiAcikMi() {
@@ -211,7 +237,10 @@ export class SipKoprusu {
         this.log.bilgi(`Baresip ctrl_tcp bağlandı (${this.host}:${this.port})`);
         coz(s);
       });
-      s.on('error', reddet);
+      s.on('error', (err) => {
+        this.log?.uyari?.(`Baresip ctrl_tcp bağlantı hatası: ${err.message}`);
+        reddet(err);
+      });
     });
   }
 
@@ -228,7 +257,7 @@ export class SipKoprusu {
    *  Yazma hataları sessizce YUTULMAZ: sayar, loglar ve 5 sn sürerse fd'yi kapatıp yoldan
    *  yeniden açar (kendi kendine iyileştirme). Başarı sayacı kanal gözcüsüne beslenir. */
   _sesBesleyiciBaslat() {
-    this._fifoKilitleriniAc();
+    this._micFdYenidenAc('besleyici başlatma');
     if (this.inFifoFd == null) {
       this.log.uyari(`mic.raw açılamadı: kilit yok`);
       return;
@@ -304,7 +333,7 @@ export class SipKoprusu {
 
   /** Baresip hoparlör çıkışını (spk.raw) dinleyip VAD ve yankı kapısı ile karşı tarafın konuşmasını yakalar */
   _sesDinleyiciBaslat(gorusme, tasiyici) {
-    this._fifoKilitleriniAc();
+    this._spkFdYenidenAc('dinleyici başlatma');
     if (!this.outFifoFd) {
       this.log.uyari(`spk.raw dinleyici başlatılamadı: kilit yok`);
       return;
@@ -316,10 +345,7 @@ export class SipKoprusu {
     let sonSttZamani = 0;
 
     try {
-      if (this.outFifoStream) {
-        try { this.outFifoStream.destroy(); } catch {}
-      }
-      this.outFifoStream = fs.createReadStream(null, { fd: this.outFifoFd, autoClose: false, highWaterMark: 320 });
+      this.outFifoStream = fs.createReadStream(null, { fd: this.outFifoFd, autoClose: true, highWaterMark: 320 });
       this.outFifoStream.on('data', (chunk) => {
         // Yalnızca çağrı aktifken karşı tarafın sesini işle (çaldırma/ringback tonunu yok say)
         if (!this.cagriAktif) return;
@@ -371,7 +397,12 @@ export class SipKoprusu {
           }
         }
       });
-      this.outFifoStream.on('error', (e) => this.log.uyari(`spk.raw okuma: ${e.message}`));
+      this.outFifoStream.on('error', (e) => {
+        this.log.uyari(`spk.raw okuma: ${e.message}`);
+        if (e.code === 'EBADF') {
+          this._spkFdYenidenAc('EBADF kurtarma');
+        }
+      });
     } catch (e) {
       this.log.uyari(`spk.raw dinleyici başlatılamadı: ${e.message}`);
     }
@@ -427,6 +458,28 @@ export class SipKoprusu {
 
     this.log.bilgi(`VoIP dış arama başlatılıyor: ${hedefNumara} (Görev #${gorev?.id || 'serbest'})`);
 
+    const asistanAdi = this.ayar?.kullanici?.asistanAdi || 'Aspasia';
+    const sahip = this.ayar?.kullanici?.ad ? `${this.ayar.kullanici.ad}'ın asistanı` : 'asistanınız';
+    const acilis = gorev?.acilis || `Merhaba! Ben ${sahip} ${asistanAdi}, nasılsınız?`;
+
+    // Açılış konuşmasını arama çevrilmeden ÖNCE arka planda hemen seslendirip PCM'e dönüştür (sıfır gecikme)
+    this._acilisPcm = null;
+    let acilisPcmPromise = null;
+    if (this.llm && typeof this.llm.seslendir === 'function') {
+      this.log.bilgi(`Açılış konuşması önceden hazırlanıyor: "${acilis.slice(0, 60)}..."`);
+      acilisPcmPromise = this.llm.seslendir(acilis)
+        .then((buf) => pcmyeDonustur(buf))
+        .then((pcm) => {
+          this._acilisPcm = pcm;
+          this.log.bilgi(`Açılış PCM sesi hazır (${pcm.length} bayt)`);
+          return pcm;
+        })
+        .catch((e) => {
+          this.log.uyari(`Açılış sesi önbellekleme hatası: ${e.message}`);
+          return null;
+        });
+    }
+
     const soket = await this._baglan();
     this.soket = soket;
 
@@ -442,6 +495,25 @@ export class SipKoprusu {
       },
       sesCal: async (buffer) => {
         try {
+          if (this._acilisPcm && !this.calanSesPcm) {
+            this.log.bilgi('Açılış PCM sesi önbellekten sıfır gecikmeyle yayına verildi');
+            this.calanSesPcm = this._acilisPcm;
+            this._acilisPcm = null;
+            this.calanSesKonumu = 0;
+            this.sesCalmaDurduruldu = false;
+            return;
+          }
+          if (acilisPcmPromise && !this._acilisPcm && !this.calanSesPcm) {
+            const pcm = await acilisPcmPromise;
+            if (pcm && !this.calanSesPcm) {
+              this.log.bilgi('Açılış PCM sesi vaat tamamlanarak yayına verildi');
+              this.calanSesPcm = pcm;
+              this._acilisPcm = null;
+              this.calanSesKonumu = 0;
+              this.sesCalmaDurduruldu = false;
+              return;
+            }
+          }
           this.log.bilgi('TTS sesi dönüştürülüyor ve çalma kuyruğuna alınıyor...');
           const pcm = await pcmyeDonustur(buffer);
           this.calanSesPcm = pcm;
@@ -542,12 +614,17 @@ export class SipKoprusu {
     if (this.outFifoStream) {
       try { this.outFifoStream.destroy(); } catch {}
       this.outFifoStream = null;
+      this.outFifoFd = null;
+    } else if (this.outFifoFd != null) {
+      try { fs.closeSync(this.outFifoFd); } catch {}
+      this.outFifoFd = null;
     }
     if (this.soket) {
       try { this.soket.destroy(); } catch {}
       this.soket = null;
     }
     this.calanSesPcm = null;
+    this._acilisPcm = null;
     this.sesCalmaDurduruldu = true;
     this.aktifGorusme = null;
   }
