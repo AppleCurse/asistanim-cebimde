@@ -29,6 +29,28 @@ karşı taraf sesi ──► STT ──► LLM (görev brifingi kişiliği, son 
 
 Yeni bir taşıyıcı eklemek = şu 5 fonksiyonu sağlamak: `metin(rol, metin, sesGelecek)`, `sesCal(buffer, mime)`, `sesDurdur()`, `durum({asama})`, `bitti(gorev, {sebep, sure})` ve motorun `sesGeldi(buffer, mime)` / `kullaniciKonustu(metin)` metotlarını beslemek.
 
+## Ses kanalı sağlığı (mic.raw / spk.raw) ve arama kapısı
+
+İki ayrı boru var: kullanıcının sesi `spk.raw`'dan girer (kulak), asistanın sesi `mic.raw`'a yazılır (ağız). Geçmişte besleyici yazma hatalarını **sessizce yutuyor**, panel "konusuyor" diyor ama kullanıcı hiç ses duymuyordu ("başarılı" arama sanrısı). Artık:
+
+- **Besleyici kendi kendini iyileştirir** (`sip.mjs`): yazma hatası sayar + loglar; EAGAIN/aralıksız hata 5 sn sürerse fd'yi kapatıp yoldan yeniden açar.
+- **Kanal gözcüsü**: `CALL_ESTABLISHED`'tan sonra 2 sn içinde besleyici 100 paket yazamazsa `⚠️ SES KANALI ÖLÜ — kullanıcı ses duymayacak` diye loglar. "konusuyor" durumu **"duyuldu" demek değildir**; `ara()` dönüşü de sesin kullanıcıya ulaştığını iddia etmez.
+- **Arama kapısı**: ses testi yeşil (`~/.asistan/run/ses-kanali-ok`) olmadan `ara()` arama ÇALDIRMAZ. Acil bypass: `SES_KANALI_KAPISI=0`.
+- **`baresip-kur.sh` FIFO'ları asla yeniden yaratmaz** (varsa `rm`+`mkfifo` yapmaz) — beyin eski inode'a yapışık kalmasın diye.
+
+### Elle doğrulama listesi (telefonda, arama ÇALDIRMADAN)
+
+```bash
+bash scripts/termux/ses-testi.sh
+```
+
+Betik 3 adımın kanıtını basar ve sonuca göre arama kapısını açar/kapar:
+1. **Ölü boru**: beyin fd'leri `(deleted)` mı, inode/path uyuşuyor mu? Sorun varsa `durdur.sh && baslat.sh` **ikisi birlikte** uygulanır (tek tek ASLA).
+2. **Besleyici**: 2 sn'de `mic.raw`'dan 3200 bayt akıyor mu? (Besleyici yalnızca çağrı sırasında yazar; çağrı yokken "uykuda" normaldir.)
+3. **ALSA**: baresip geçici durdurulur, 440 Hz tını `mic.raw`'a basılır, proot içi `arecord -D mic` yakalar. `od` çıktısında ±20000 civarı salınım → ALSA sağlam (sorun baresip RTP tarafında); sıfır/EOF → `.asoundrc` `pcm.mic` tanımı yeniden kurulur (`bash scripts/proot/baresip-kur.sh` — artık FIFO'lara dokunmadan `.asoundrc`'yi yeniler).
+
+Yeşil sonuç `~/.asistan/run/ses-kanali-ok` işaretini yazar; kırmızıda işaret silinir ve aramalar kapalı kalır.
+
 ## Faz 3 — VoIP köprüsü seçenekleri
 
 ### A) Bulut telefon API'si + medya akışı (önerilen ilk adım)

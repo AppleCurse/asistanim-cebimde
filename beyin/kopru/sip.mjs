@@ -4,13 +4,13 @@
 
 import net from 'node:net';
 import fs from 'node:fs';
+import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { Gorusme } from './motor.mjs';
+import { ASISTAN_HOME } from '../../ortak/ayar.mjs';
 
 const ROOTFS_TMP = '/data/data/com.termux/files/usr/var/lib/proot-distro/containers/ubuntu/rootfs/tmp';
 const BASE_TMP = fs.existsSync(ROOTFS_TMP) ? ROOTFS_TMP : '/tmp';
-const IN_FIFO_YOLU = `${BASE_TMP}/mic.raw`;
-const OUT_FIFO_YOLU = `${BASE_TMP}/spk.raw`;
 
 /** DJB Netstring kodlama: <uzunluk>:<veri>, */
 export function netstringKodla(nesne) {
@@ -123,7 +123,7 @@ export function pcmyeDonustur(sesBuffer) {
 }
 
 export class SipKoprusu {
-  constructor({ llm, gorevler, ayar, log, port = 4444, host = '127.0.0.1' }) {
+  constructor({ llm, gorevler, ayar, log, port = 4444, host = '127.0.0.1', fifoDizini = BASE_TMP, sesKapisiYolu = path.join(ASISTAN_HOME, 'run', 'ses-kanali-ok'), yazmaHatasiKurtarmaMs = 5000 }) {
     this.llm = llm;
     this.gorevler = gorevler;
     this.ayar = ayar;
@@ -140,24 +140,63 @@ export class SipKoprusu {
     this.outFifoFd = null;
     this.outFifoStream = null;
     this.cagriAktif = false;
+    // Ses gidiş hattı (mic.raw) sağlığı: besleyici sayaçları + kanal gözcüsü
+    this.inFifoYolu = `${fifoDizini}/mic.raw`;
+    this.outFifoYolu = `${fifoDizini}/spk.raw`;
+    this.sesKapisiYolu = sesKapisiYolu;
+    this.yazmaHatasiKurtarmaMs = yazmaHatasiKurtarmaMs;
+    this.besleyiciBasariliSayac = 0;   // son sıfırlamadan beri başarıyla yazılan paket
+    this.besleyiciHataSayaci = 0;      // toplam yazma hatası (sessizce YUTULMAZ)
+    this._yazmaHatasiBaslangic = null; // aralıksız yazma hatasının başladığı an
+    this._sesKanaliOlusuLoglandi = false;
+    this.sesKanaliDurumu = 'dogrulanmadi'; // dogrulanmadi | saglam | olu
+    this.sesKanalGozcusu = null;
     this._fifoKilitleriniAc();
   }
 
   _fifoKilitleriniAc() {
     try {
-      if (!this.inFifoFd && fs.existsSync(IN_FIFO_YOLU)) {
-        this.inFifoFd = fs.openSync(IN_FIFO_YOLU, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
+      if (this.inFifoFd == null && fs.existsSync(this.inFifoYolu)) {
+        this.inFifoFd = fs.openSync(this.inFifoYolu, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
       }
     } catch (e) {
       this.log?.uyari?.(`inFifo açılamadı: ${e.message}`);
     }
     try {
-      if (!this.outFifoFd && fs.existsSync(OUT_FIFO_YOLU)) {
-        this.outFifoFd = fs.openSync(OUT_FIFO_YOLU, fs.constants.O_RDWR);
+      if (this.outFifoFd == null && fs.existsSync(this.outFifoYolu)) {
+        this.outFifoFd = fs.openSync(this.outFifoYolu, fs.constants.O_RDWR);
       }
     } catch (e) {
       this.log?.uyari?.(`outFifo açılamadı: ${e.message}`);
     }
+  }
+
+  /** mic.raw fd'sini kapatıp yoldan yeniden açar (kendi kendine iyileştirme).
+   *  Sebep: baresip-kur.sh FIFO'ları yeniden yarattığında beyin eski (deleted) inode'a
+   *  yapışık kalabilir; ya da boru ucu bir noktada ölmüş olabilir. */
+  _micFdYenidenAc(sebep = '') {
+    if (this.inFifoFd != null) {
+      try { fs.closeSync(this.inFifoFd); } catch {}
+      this.inFifoFd = null;
+    }
+    try {
+      if (fs.existsSync(this.inFifoYolu)) {
+        this.inFifoFd = fs.openSync(this.inFifoYolu, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
+        this.log?.bilgi?.(`mic.raw fd yoldan yeniden açıldı${sebep ? ` (${sebep})` : ''}`);
+        return true;
+      }
+      this.log?.hata?.(`mic.raw yeniden açılamadı: yol yok (${this.inFifoYolu})`);
+    } catch (e) {
+      this.log?.hata?.(`mic.raw yeniden açılamadı: ${e.message}`);
+    }
+    return false;
+  }
+
+  /** Arama kapısı: ses testi yeşil (scripts/termux/ses-testi.sh) olmadan arama ÇALDIRILMAZ.
+   *  SES_KANALI_KAPISI=0 ortam değişkeni kapıyı tamamen açar (acil bypass). */
+  _sesKapisiAcikMi() {
+    if (process.env.SES_KANALI_KAPISI === '0') return true;
+    try { return fs.existsSync(this.sesKapisiYolu); } catch { return false; }
   }
 
   _baglan() {
@@ -179,21 +218,23 @@ export class SipKoprusu {
     return '00' + n;
   }
 
-  /** Baresip mikrofon girişine (mic.raw) kesintisiz, duvar saatine kilitli S16LE PCM basan besleyici */
+  /** Baresip mikrofon girişine (mic.raw) kesintisiz, duvar saatine kilitli S16LE PCM basan besleyici.
+   *  Yazma hataları sessizce YUTULMAZ: sayar, loglar ve 5 sn sürerse fd'yi kapatıp yoldan
+   *  yeniden açar (kendi kendine iyileştirme). Başarı sayacı kanal gözcüsüne beslenir. */
   _sesBesleyiciBaslat() {
     this._fifoKilitleriniAc();
-    if (!this.inFifoFd) {
+    if (this.inFifoFd == null) {
       this.log.uyari(`mic.raw açılamadı: kilit yok`);
       return;
     }
 
     const sessizPaket = Buffer.alloc(320); // 20ms @ 8000Hz 16-bit mono = 320 byte
-    const baslangicZamani = Date.now();
+    let baslangicZamani = Date.now();
     let gonderilenPaketSayisi = 0;
 
     if (this.besleyiciZamanlayici) clearInterval(this.besleyiciZamanlayici);
     this.besleyiciZamanlayici = setInterval(() => {
-      if (!this.inFifoFd) return;
+      if (this.inFifoFd == null) return;
       const gecenMs = Date.now() - baslangicZamani;
       const olmasiGereken = Math.floor(gecenMs / 20);
       const fark = Math.min(5, Math.max(0, olmasiGereken - gonderilenPaketSayisi));
@@ -216,9 +257,39 @@ export class SipKoprusu {
           }
         }
         try {
-          fs.writeSync(this.inFifoFd, paket);
-          gonderilenPaketSayisi++;
-        } catch {
+          const yazilan = fs.writeSync(this.inFifoFd, paket);
+          if (yazilan === paket.length) {
+            this.besleyiciBasariliSayac++;
+            this._yazmaHatasiBaslangic = null;
+            gonderilenPaketSayisi++;
+          } else {
+            // 320 bayt PIPE_BUF'tan küçük; kısmi yazım olmamalı — yine de say
+            this.besleyiciBasariliSayac++;
+            gonderilenPaketSayisi++;
+          }
+        } catch (hata) {
+          this.besleyiciHataSayaci++;
+          const simdi = Date.now();
+          if (this._yazmaHatasiBaslangic == null) this._yazmaHatasiBaslangic = simdi;
+          if (this.besleyiciHataSayaci === 1 || this.besleyiciHataSayaci % 100 === 0) {
+            this.log.uyari(`mic.raw yazma hatası: ${hata.code || hata.message} (toplam ${this.besleyiciHataSayaci})`);
+          }
+          // EAGAIN/aralıksız hata 5 sn sürerse: fd'yi kapatıp yoldan yeniden aç (kendi kendine iyileştirme)
+          if (simdi - this._yazmaHatasiBaslangic >= this.yazmaHatasiKurtarmaMs) {
+            const sureSn = Math.round((simdi - this._yazmaHatasiBaslangic) / 1000);
+            this.log.uyari(`mic.raw yazma hatası ${sureSn} sn sürüyor (${hata.code || hata.message}) — fd kapatılıp yoldan yeniden açılıyor`);
+            this._micFdYenidenAc(`yazma hatası ${sureSn} sn`);
+            this._yazmaHatasiBaslangic = null;
+            // Duvar saatini yeniden hizala: birikmiş gecikme yığını sesi hızlandırarak patlamasın
+            baslangicZamani = Date.now();
+            gonderilenPaketSayisi = 0;
+            // Çağrı aktifken 5 sn boyunca tek bayt yazılamadıysa gidiş hattı ölüdür
+            if (this.cagriAktif && !this._sesKanaliOlusuLoglandi) {
+              this._sesKanaliOlusuLoglandi = true;
+              this.sesKanaliDurumu = 'olu';
+              this.log.hata('⚠️ SES KANALI ÖLÜ — kullanıcı ses duymayacak (mic.raw\'a 5 sn\'dir yazılamıyor)');
+            }
+          }
           break;
         }
       }
@@ -261,7 +332,7 @@ export class SipKoprusu {
         }
 
         // Görüşme motoru yanıt hazırlıyorsa yeni kayıt alma
-        if (gorusme.durum === 'dusununuyor') {
+        if (gorusme.durum === 'dusunuyor') {
           konusmaParcalari = [];
           return;
         }
@@ -300,7 +371,34 @@ export class SipKoprusu {
     }
   }
 
+  /** Kanal gözcüsü: CALL_ESTABLISHED'tan sonra 2 sn içinde besleyici 100 paket
+   *  başarıyla yazamadıysa gidiş hattı ölüdür — kullanıcı hiçbir şey duymayacak.
+   *  "konusuyor" durumu asla "duyuldu" diye rapORLANMAZ; gözcü "saglam" demedikçe
+   *  sesin karşı tarafa ulaştığı bilinmez. */
+  _sesKanalGozcusuBaslat() {
+    clearTimeout(this.sesKanalGozcusu);
+    this.besleyiciBasariliSayac = 0;
+    this._sesKanaliOlusuLoglandi = false;
+    this.sesKanalGozcusu = setTimeout(() => {
+      if (!this.cagriAktif) return;
+      const n = this.besleyiciBasariliSayac;
+      if (n < 100) {
+        this.sesKanaliDurumu = 'olu';
+        this._sesKanaliOlusuLoglandi = true;
+        this.log.hata(`⚠️ SES KANALI ÖLÜ — kullanıcı ses duymayacak (2 sn'de ${n}/100 paket yazıldı)`);
+        this.log.uyari('Not: "konusuyor" durumu "duyuldu" anlamına DEĞİL — ses karşı tarafa gitmedi');
+      } else {
+        this.sesKanaliDurumu = 'saglam';
+        this.log.bilgi(`✅ Ses gidiş hattı sağlam (2 sn'de ${n} paket yazıldı)`);
+      }
+    }, 2000);
+  }
+
   async ara({ gorev, numara }) {
+    // ARAMA KAPISI: ses testi (scripts/termux/ses-testi.sh) yeşil olmadan kimse ÇALDIRILMAZ.
+    if (!this._sesKapisiAcikMi()) {
+      throw new Error('Ses kanalı doğrulanmadı — ses testi yeşil olana kadar arama kapalı. Önce `bash scripts/termux/ses-testi.sh` çalıştır (çaldırmadan kanıtlar). Acil bypass: SES_KANALI_KAPISI=0');
+    }
     const hedefNumara = this.formatlaNumara(numara || gorev?.kisi?.numara);
     if (!hedefNumara) throw new Error('Geçersiz telefon numarası');
 
@@ -326,6 +424,12 @@ export class SipKoprusu {
           this.calanSesPcm = pcm;
           this.calanSesKonumu = 0;
           this.sesCalmaDurduruldu = false;
+          // Dürüst rapor: "konusuyor" ≠ "duyuldu". Ses ancak gözcü "saglam" dediyse gitmiştir.
+          if (this.sesKanaliDurumu === 'olu') {
+            this.log.uyari('TTS kuyruğa alındı AMA ses kanalı ölü — kullanıcı BUNU DUYMAYACAK ("konusuyor" ≠ "duyuldu")');
+          } else if (this.sesKanaliDurumu !== 'saglam') {
+            this.log.uyari('TTS kuyruğa alındı; kullanıcıya ulaşıp ulaşmadığı henüz doğrulanmadı ("konusuyor" ≠ "duyuldu")');
+          }
         } catch (e) {
           this.log.hata(`TTS çalma hatası: ${e.message}`);
         }
@@ -363,6 +467,8 @@ export class SipKoprusu {
       baslatildi = true;
       this.cagriAktif = true;
       this.log.bilgi(`📞 ÇAĞRI AKTİF (${sebep})! Aspasia söze başlıyor.`);
+      // Kanal gözcüsü: 2 sn içinde 100 paket yazılamazsa SES KANALI ÖLÜ diye bağır
+      this._sesKanalGozcusuBaslat();
       gorusme.baslat().catch((e) => this.log.hata(`Görüşme başlatma: ${e.message}`));
     };
 
@@ -390,11 +496,21 @@ export class SipKoprusu {
 
     // Aramayı çevir
     komutGonder({ command: 'dial', params: hedefNumara });
-    return { basarili: true, numara: hedefNumara };
+    // Dürüst rapor: "çevrildi" ≠ "duyuldu". Ses kanalı gözcüsü sonucu ayrıca loglar.
+    return {
+      basarili: true,
+      numara: hedefNumara,
+      sesKanali: this.sesKanaliDurumu,
+      not: 'Çağrı çevrildi; sesin kullanıcıya ulaştığı henüz doğrulanmadı — "duyuldu" diye raporlamayın. Gözcü sonucu loglara yazar (⚠️ SES KANALI ÖLÜ / ✅ Ses gidiş hattı sağlam).',
+    };
   }
 
   _temizle() {
     this.cagriAktif = false;
+    clearTimeout(this.sesKanalGozcusu);
+    this.sesKanalGozcusu = null;
+    this.sesKanaliDurumu = 'dogrulanmadi';
+    this._sesKanaliOlusuLoglandi = false;
     if (this.besleyiciZamanlayici) {
       clearInterval(this.besleyiciZamanlayici);
       this.besleyiciZamanlayici = null;
