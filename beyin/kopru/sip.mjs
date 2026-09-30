@@ -153,7 +153,7 @@ export class SipKoprusu {
     }
     try {
       if (!this.outFifoFd && fs.existsSync(OUT_FIFO_YOLU)) {
-        this.outFifoFd = fs.openSync(OUT_FIFO_YOLU, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
+        this.outFifoFd = fs.openSync(OUT_FIFO_YOLU, fs.constants.O_RDWR);
       }
     } catch (e) {
       this.log?.uyari?.(`outFifo açılamadı: ${e.message}`);
