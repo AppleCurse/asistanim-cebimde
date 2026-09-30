@@ -70,11 +70,32 @@ function agAdresleri() {
 
 export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bedenToken = tokenAl('beden'), log = logOlustur('beyin'), host, port } = {}) {
   const llm = new LLMIstemci({ ...ayar.beyin.llm });
+  const aramaAyar = ayar.arama?.llm || {};
+  const aramaBaseUrl = aramaAyar.baseUrl || (aramaAyar.model ? '' : llm.baseUrl);
+  const aramaApiKey = aramaAyar.apiKey || (
+    aramaBaseUrl.includes('groq.com') ? (ayar.beyin.llm.groqApiKey || process.env.GROQ_API_KEY) :
+    aramaBaseUrl.includes('cerebras.ai') ? (ayar.beyin.llm.cerebrasApiKey || process.env.CEREBRAS_API_KEY) :
+    aramaBaseUrl.includes('openrouter.ai') ? (ayar.beyin.llm.openrouterApiKey || process.env.OPENROUTER_API_KEY) :
+    llm.apiKey
+  );
+  const aramaLlm = (aramaAyar.model || aramaAyar.baseUrl)
+    ? new LLMIstemci({
+        baseUrl: aramaBaseUrl || llm.baseUrl,
+        apiKey: aramaApiKey,
+        model: aramaAyar.model || llm.model,
+        sicaklik: 0.3,
+        sttModel: ayar.beyin.llm.sttModel,
+        ttsModel: ayar.beyin.llm.ttsModel,
+        ttsVoice: ayar.beyin.llm.ttsVoice,
+        groqApiKey: ayar.beyin.llm.groqApiKey,
+        openrouterApiKey: ayar.beyin.llm.openrouterApiKey,
+      })
+    : llm;
   const beden = new BedenIstemci({ url: ayar.beyin.bedenUrl, token: bedenToken });
   const hafiza = new Hafiza();
   const gorevler = new GorevYoneticisi({ llm, ayar, hafiza, log });
   const asistan = new Asistan({ llm, beden, ayar, hafiza, gorevler, log });
-  const sipKoprusu = new SipKoprusu({ llm, gorevler, ayar, log });
+  const sipKoprusu = new SipKoprusu({ llm: aramaLlm, gorevler, ayar, log });
 
   const yetkiliMi = (req, url) => {
     const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
@@ -219,7 +240,7 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
   const sunucu = tls ? https.createServer(tls, istekIsleyici) : http.createServer(istekIsleyici);
   const sema = tls ? 'https' : 'http';
 
-  tarayiciKoprusuKur({ sunucu, yetkiliMi, llm, gorevler, ayar, log });
+  tarayiciKoprusuKur({ sunucu, yetkiliMi, llm: aramaLlm, gorevler, ayar, log });
 
   const dinleHost = host ?? ayar.beyin.host;
   const dinlePort = port ?? ayar.beyin.port;

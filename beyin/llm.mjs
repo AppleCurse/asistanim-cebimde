@@ -115,7 +115,10 @@ export class LLMIstemci {
       govde.tools = araclar;
       govde.tool_choice = 'auto';
     }
-    govde.max_tokens = maksToken || 1000;
+    govde.max_tokens = maksToken || 600;
+    if (/gpt-oss|o1|o3/i.test(modelAdi)) {
+      govde.reasoning_effort = 'low';
+    }
 
     let yanit;
     try {

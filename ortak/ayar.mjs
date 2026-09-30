@@ -63,9 +63,14 @@ export const VARSAYILAN_AYAR = {
     hafizaLimiti: 6000 // sistem mesajına eklenen hafıza karakter sınırı
   },
   arama: {
-    varsayilanMod: 'tarayici', // tarayici | hucresel | voip
+    varsayilanMod: 'voip',     // tarayici | hucresel | voip
     aiOlduguSoylensin: true,   // görüşmenin başında "dijital asistan" olduğunu söyle
     maksSure: 15 * 60,         // saniye
+    llm: {
+      baseUrl: '',
+      apiKey: '',
+      model: '',
+    },
   },
 };
 
@@ -113,6 +118,10 @@ function ortamUygula(ayar) {
   if (e.GROQ_API_KEY) a.beyin.llm.groqApiKey = e.GROQ_API_KEY;
   if (e.CEREBRAS_API_KEY) a.beyin.llm.cerebrasApiKey = e.CEREBRAS_API_KEY;
   if (e.TAVILY_API_KEY) a.beyin.llm.tavilyApiKey = e.TAVILY_API_KEY;
+  if (!a.arama.llm) a.arama.llm = {};
+  if (e.ARAMA_LLM_BASE_URL) a.arama.llm.baseUrl = e.ARAMA_LLM_BASE_URL;
+  if (e.ARAMA_LLM_API_KEY) a.arama.llm.apiKey = e.ARAMA_LLM_API_KEY;
+  if (e.ARAMA_LLM_MODEL) a.arama.llm.model = e.ARAMA_LLM_MODEL;
   return a;
 }
 
