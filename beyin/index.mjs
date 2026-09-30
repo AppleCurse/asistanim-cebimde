@@ -16,6 +16,7 @@ import { GorevYoneticisi } from './gorev.mjs';
 import { Asistan } from './asistan.mjs';
 import { tarayiciKoprusuKur } from './kopru/tarayici.mjs';
 import { SipKoprusu } from './kopru/sip.mjs';
+import { Telemetri } from '../ortak/telemetri.mjs';
 
 const WEB_DIZINI = path.join(path.dirname(fileURLToPath(import.meta.url)), 'web');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
@@ -77,7 +78,8 @@ function agAdresleri() {
 }
 
 export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bedenToken = tokenAl('beden'), log = logOlustur('beyin'), host, port } = {}) {
-  const llm = new LLMIstemci({ ...ayar.beyin.llm });
+  const telemetri = new Telemetri();
+  const llm = new LLMIstemci({ ...ayar.beyin.llm, telemetry: telemetri });
   const aramaAyar = ayar.arama?.llm || {};
   const aramaBaseUrl = aramaAyar.baseUrl || (aramaAyar.model ? '' : llm.baseUrl);
   const aramaApiKey = aramaAyar.apiKey || (
@@ -131,6 +133,8 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
       };
     }
     if (M === 'GET' && yol === '/modeller') return { modeller: await llm.modeller(), secili: llm.model };
+    if (M === 'GET' && yol === '/maliyet') return telemetri.rapor({ gun: Math.min(365, Math.max(1, Number(url.searchParams.get('gun') || 1))) });
+    if (M === 'GET' && yol === '/kara-kutu') return { olaylar: telemetri.oku({ limit: Math.min(2000, Math.max(1, Number(url.searchParams.get('limit') || 200))) }) };
 
     if (M === 'POST' && yol === '/sohbet') {
       if (!govde.metin?.trim() && !govde.resimler?.length) throw Object.assign(new Error('metin gerekli'), { kod: 400 });
