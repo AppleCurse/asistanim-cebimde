@@ -24,7 +24,7 @@ yasiyor() { [[ -f "$RUN/$1.pid" ]] && kill -0 "$(cat "$RUN/$1.pid")" 2>/dev/null
 baslat() {
   local ad="$1"; shift
   if yasiyor "$ad"; then echo "  $ad zaten çalışıyor (pid $(cat "$RUN/$ad.pid"))"; return; fi
-  setsid "$SERVIS" "$ad" "$@" </dev/null >/dev/null 2>&1 &
+  nohup bash "$SERVIS" "$ad" "$@" </dev/null >/dev/null 2>&1 &
   sleep 0.3
   echo "  $ad başlatıldı"
 }

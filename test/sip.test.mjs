@@ -89,7 +89,7 @@ test('SIP: arama kapısı — ses testi yeşil değilken arama ÇALDIRILMAZ', as
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-test('SIP: besleyici yazma hatasını yutmaz; sayar, loglar ve fd\'yi yeniden açar', async () => {
+test('SIP: besleyici yazma hatasını yutmaz; sayar, loglar ve fd\'yi yeniden açar', { skip: process.platform === 'win32' ? 'mkfifo Windows üzerinde bulunmaz' : false }, async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sip-besleyici-'));
   execFileSync('mkfifo', [path.join(tmp, 'mic.raw'), path.join(tmp, 'spk.raw')]);
 

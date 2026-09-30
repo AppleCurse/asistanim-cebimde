@@ -286,7 +286,7 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
   const sunucu = tls ? https.createServer(tls, istekIsleyici) : http.createServer(istekIsleyici);
   const sema = tls ? 'https' : 'http';
 
-  tarayiciKoprusuKur({ sunucu, yetkiliMi, llm: aramaLlm, gorevler, ayar, log });
+  const wss = tarayiciKoprusuKur({ sunucu, yetkiliMi, llm: aramaLlm, gorevler, ayar, log });
 
   const dinleHost = host ?? ayar.beyin.host;
   const dinlePort = port ?? ayar.beyin.port;
@@ -303,7 +303,7 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
     }
   });
 
-  return { sunucu, asistan, gorevler, cebimon, llm, beden, hafiza, token };
+  return { sunucu, wss, asistan, gorevler, cebimon, llm, beden, hafiza, token };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

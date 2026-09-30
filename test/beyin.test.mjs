@@ -40,8 +40,15 @@ before(async () => {
 });
 
 after(() => {
+  try {
+    beyin.wss?.clients?.forEach((c) => c.terminate());
+    beyin.wss?.close();
+  } catch {}
+  if (beyin.sunucu?.closeAllConnections) beyin.sunucu.closeAllConnections();
   beyin.sunucu.close();
+  if (beden?.closeAllConnections) beden.closeAllConnections();
   beden.close();
+  if (sahte.sunucu?.closeAllConnections) sahte.sunucu.closeAllConnections();
   sahte.sunucu.close();
   fs.rmSync(process.env.ASISTAN_HOME, { recursive: true, force: true });
 });
@@ -308,25 +315,47 @@ test('telefon köprüsü: sunucu sesi modunda ses gelir ve STT çalışır', asy
   const ws = new WebSocket(beyinUrl.replace('http', 'ws') + `/ws/telefon?token=${token}`);
   const metinler = [];
   let ikiliSayisi = 0;
+  const bekleyenler = new Set();
+  const bekle = (kosul, zamanAsimi = 5000) =>
+    new Promise((coz, reddet) => {
+      const mevcut = kosul();
+      if (mevcut) return coz(mevcut);
+      const t = setTimeout(() => reddet(new Error(`beklenen olay için zaman aşımı (${zamanAsimi}ms)`)), zamanAsimi);
+      const dinle = () => {
+        const simdi = kosul();
+        if (simdi) {
+          clearTimeout(t);
+          bekleyenler.delete(dinle);
+          coz(simdi);
+        }
+      };
+      bekleyenler.add(dinle);
+    });
+
   ws.on('message', (veri, ikili) => {
     if (ikili) ikiliSayisi++;
     else metinler.push(JSON.parse(veri.toString()));
+    for (const d of [...bekleyenler]) d();
   });
-  await new Promise((r) => ws.once('open', r));
-  ws.send(JSON.stringify({ tip: 'baslat', mod: 'sunucu-ses' }));
-  await new Promise((r) => setTimeout(r, 400));
-  assert.ok(metinler.some((m) => m.tip === 'hazir'));
-  assert.ok(metinler.some((m) => m.tip === 'ses' && m.mime === 'audio/mpeg'));
-  assert.ok(ikiliSayisi >= 1, 'mp3 ikili çerçevesi bekleniyordu');
 
-  ws.send(JSON.stringify({ tip: 'ses', mime: 'audio/webm' }));
-  ws.send(Buffer.from('sahte-webm-verisi'));
-  await new Promise((r) => setTimeout(r, 400));
-  assert.ok(metinler.some((m) => m.tip === 'metin' && m.rol === 'karsi' && m.metin === 'sahte transkript'));
-  ws.send(JSON.stringify({ tip: 'bitir' }));
-  await new Promise((r) => setTimeout(r, 200));
-  assert.ok(metinler.some((m) => m.tip === 'bitti' && m.sebep === 'kullanici-kapatti'));
-  ws.close();
+  try {
+    await new Promise((r) => ws.once('open', r));
+    ws.send(JSON.stringify({ tip: 'baslat', mod: 'sunucu-ses' }));
+    await bekle(() => metinler.some((m) => m.tip === 'hazir'));
+    await bekle(() => metinler.some((m) => m.tip === 'ses' && m.mime === 'audio/mpeg') && ikiliSayisi >= 1);
+    assert.ok(metinler.some((m) => m.tip === 'hazir'));
+    assert.ok(metinler.some((m) => m.tip === 'ses' && m.mime === 'audio/mpeg'));
+    assert.ok(ikiliSayisi >= 1, 'mp3 ikili çerçevesi bekleniyordu');
+
+    ws.send(JSON.stringify({ tip: 'ses', mime: 'audio/webm' }));
+    ws.send(Buffer.from('sahte-webm-verisi'));
+    await bekle(() => metinler.some((m) => m.tip === 'metin' && m.rol === 'karsi' && m.metin === 'sahte transkript'));
+
+    ws.send(JSON.stringify({ tip: 'bitir' }));
+    await bekle(() => metinler.some((m) => m.tip === 'bitti' && m.sebep === 'kullanici-kapatti'));
+  } finally {
+    ws.close();
+  }
 });
 
 test('telefon köprüsü: yetkisiz WebSocket reddedilir', async () => {
