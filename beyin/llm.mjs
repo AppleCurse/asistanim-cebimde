@@ -1,5 +1,9 @@
 // 9router, OpenRouter, Groq ve Edge-TTS istemcisi: sohbet, STT, TTS.
 import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { Telemetri } from '../ortak/telemetri.mjs';
 
 export class LLMHatasi extends Error {
   constructor(mesaj, { durum, govde } = {}) {
@@ -23,6 +27,7 @@ export class LLMIstemci {
     groqApiKey,
     cerebrasApiKey,
     tavilyApiKey,
+    telemetry,
   } = {}) {
     this.openrouterApiKey = openrouterApiKey || process.env.OPENROUTER_API_KEY || '';
     this.groqApiKey = groqApiKey || process.env.GROQ_API_KEY || '';
@@ -37,6 +42,11 @@ export class LLMIstemci {
     this.ttsModel = ttsModel || process.env.TTS_MODEL || 'tts-1';
     this.ttsVoice = ttsVoice || process.env.TTS_VOICE || 'tr-TR-AhmetNeural';
     this.zamanAsimi = zamanAsimi;
+    this.telemetri = telemetry || new Telemetri();
+    this.piperModel = process.env.PIPER_MODEL || '';
+    this.piperBin = process.env.PIPER_BIN || 'piper';
+    this.promptUSDPer1K = Number(process.env.LLM_PROMPT_USD_PER_1K || 0);
+    this.completionUSDPer1K = Number(process.env.LLM_COMPLETION_USD_PER_1K || 0);
   }
 
   _basliklar(ek = {}) {
@@ -155,7 +165,15 @@ export class LLMIstemci {
     const veri = await yanit.json();
     const secim = veri.choices?.[0];
     if (!secim?.message) throw new LLMHatasi('LLM boş yanıt döndürdü', { govde: JSON.stringify(veri).slice(0, 400) });
-    return { mesaj: secim.message, kullanim: veri.usage, model: veri.model || govde.model, bitis: secim.finish_reason };
+    const kullanim = veri.usage;
+    this.telemetri?.yaz('llm', {
+      model: veri.model || govde.model,
+      prompt: kullanim?.prompt_tokens || 0,
+      completion: kullanim?.completion_tokens || 0,
+      token: (kullanim?.prompt_tokens || 0) + (kullanim?.completion_tokens || 0),
+      maliyetTL: (((kullanim?.prompt_tokens || 0) / 1000) * this.promptUSDPer1K + ((kullanim?.completion_tokens || 0) / 1000) * this.completionUSDPer1K) * 35,
+    });
+    return { mesaj: secim.message, kullanim, model: veri.model || govde.model, bitis: secim.finish_reason };
   }
 
   /** Metin isteyip JSON bekleyen çağrılar için toleranslı ayrıştırıcı. */
@@ -208,7 +226,26 @@ export class LLMIstemci {
     if (!metin || !metin.trim()) return Buffer.alloc(0);
     const sesSecimi = ses || this.ttsVoice || 'tr-TR-EmelNeural';
 
-    // 1. Termux / sistemde edge-tts varsa doğrudan kullan (ücretsiz, doğal Türkçe, ultra hızlı)
+    // 1. Piper: tamamen cihaz içinde, ağsız ve düşük gecikmeli Türkçe TTS.
+    // PIPER_MODEL bir .onnx dosyasını göstermelidir; model depoya gömülmez.
+    if (this.piperModel) {
+      const cikti = path.join(os.tmpdir(), `asistan-piper-${process.pid}-${Date.now()}.wav`);
+      try {
+        await new Promise((resolve, reject) => {
+          const p = spawn(this.piperBin, ['--model', this.piperModel, '--output_file', cikti], { stdio: ['pipe', 'ignore', 'pipe'] });
+          let hata = '';
+          p.stderr.on('data', (d) => { hata += d; });
+          p.on('error', reject);
+          p.on('close', (kod) => kod === 0 ? resolve() : reject(new Error(hata || `piper çıkış kodu ${kod}`)));
+          p.stdin.end(metin);
+        });
+        const sesBuffer = fs.readFileSync(cikti);
+        fs.rmSync(cikti, { force: true });
+        if (sesBuffer.length) { this.telemetri?.yaz('tts', { motor: 'piper', karakter: metin.length }); return sesBuffer; }
+      } catch { fs.rmSync(cikti, { force: true }); }
+    }
+
+    // 2. Termux / sistemde edge-tts varsa doğrudan kullan (ücretsiz, doğal Türkçe, ultra hızlı)
     try {
       const sesBuffer = await new Promise((resolve, reject) => {
         const p = spawn('edge-tts', ['--voice', sesSecimi, '--text', metin, '--write-media', '-'], {
