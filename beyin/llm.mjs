@@ -115,7 +115,7 @@ export class LLMIstemci {
       govde.tools = araclar;
       govde.tool_choice = 'auto';
     }
-    govde.max_tokens = maksToken || 600;
+    govde.max_tokens = maksToken || 350;
     if (/gpt-oss|o1|o3/i.test(modelAdi)) {
       govde.reasoning_effort = 'low';
     }
@@ -128,8 +128,17 @@ export class LLMIstemci {
         body: JSON.stringify(govde),
       });
     } catch (hata) {
-      // 9router başarısız olduysa ve OpenRouter anahtarımız varsa OpenRouter'a düş
-      if (this.openrouterApiKey && !this.baseUrl.includes('openrouter.ai')) {
+      const affordMatch = hata.message?.match(/can only afford (\d+)/i);
+      if (affordMatch && Number(affordMatch[1]) >= 50 && (!maksToken || maksToken > Number(affordMatch[1]))) {
+        const yeniLimit = Math.max(50, Number(affordMatch[1]) - 10);
+        console.log(`[LLM] Kredi kısıtı nedeniyle max_tokens ${yeniLimit} olarak ayarlanıp tekrar deneniyor...`);
+        govde.max_tokens = yeniLimit;
+        yanit = await this._istek('/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(govde),
+        });
+      } else if (this.openrouterApiKey && !this.baseUrl.includes('openrouter.ai')) {
         console.log('[LLM] 9router başarısız, OpenRouter yedeğine geçiliyor (meta-llama/llama-3.3-70b-instruct)');
         const yedekIstemci = new LLMIstemci({
           baseUrl: 'https://openrouter.ai/api/v1',
@@ -138,8 +147,9 @@ export class LLMIstemci {
           sicaklik: this.sicaklik,
         });
         return yedekIstemci.sohbet(mesajlar, { araclar, model: 'meta-llama/llama-3.3-70b-instruct', sicaklik, maksToken });
+      } else {
+        throw hata;
       }
-      throw hata;
     }
 
     const veri = await yanit.json();
