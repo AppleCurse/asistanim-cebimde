@@ -46,7 +46,7 @@ echo "════════════════════════�
 # 1) Ölü boru kontrolü (fd ↔ dosya uyuşması)
 # ───────────────────────────────────────────────
 adim "1) Ölü boru kontrolü — beyin fd'leri"
-BEYIN_PID="$(pgrep -f 'node.*beyin' 2>/dev/null | head -1 || true)"
+BEYIN_PID="$(cat "$RUN/beyin.child.pid" 2>/dev/null || pgrep -f '^node.*beyin' 2>/dev/null | tail -1 || true)"
 if [[ -z "$BEYIN_PID" ]]; then
   uyari "beyin süreci bulunamadı (node.*beyin) — fd kontrolü atlandı"
 else
@@ -84,7 +84,7 @@ else
     sleep 1
     bash "$REPO_DIR/scripts/termux/baslat.sh"
     sleep 2
-    BEYIN_PID="$(pgrep -f 'node.*beyin' 2>/dev/null | head -1 || true)"
+    BEYIN_PID="$(cat "$RUN/beyin.child.pid" 2>/dev/null || pgrep -f '^node.*beyin' 2>/dev/null | tail -1 || true)"
     echo "  Yeniden kontrol (beyin pid: ${BEYIN_PID:-yok})..."
     KIRIK=0
     if [[ -z "$BEYIN_PID" ]]; then
@@ -167,7 +167,7 @@ NODEEOF
   TINI_PID=$!
 
   echo "  proot: arecord -D mic (3 sn) çalıştırılıyor..."
-  proot-distro login ubuntu -- bash -c 'arecord -D mic -r 8000 -f S16_LE -c 1 -t raw -d 3 /tmp/deneme.pcm' || \
+  proot-distro login --bind /dev/zero:/dev/full ubuntu -- bash -c 'arecord -D mic -r 8000 -f S16_LE -c 1 -t raw -d 3 /tmp/deneme.pcm' || \
     hata "arecord çalışmadı — ALSA pcm.mic tanımı açılamıyor"
   wait "$TINI_PID" 2>/dev/null
 

@@ -29,5 +29,7 @@ echo
 SEMA=http; [[ -f "$ASISTAN_HOME/tls/cert.pem" ]] && SEMA=https
 IP="$(ip -4 addr show wlan0 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1)"
 [[ -z "$IP" ]] && IP="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{print $7}')"
-echo "  Panel (aynı Wi-Fi/Tailscale): $SEMA://${IP:-<telefon-ip>}:$BEYIN_PORT/?token=$TOKEN"
+echo "  Yerel Panel (Aynı Wi-Fi): $SEMA://${IP:-<telefon-ip>}:$BEYIN_PORT/?token=$TOKEN"
+TUNEL_URL="$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' "$ASISTAN_HOME/log/tunel.log" 2>/dev/null | tail -1)"
+[[ -n "$TUNEL_URL" ]] && echo "  Online Panel (Dünyanın her yerinden): $TUNEL_URL/?token=$TOKEN"
 echo "  Loglar: $ASISTAN_HOME/log/   Durdur: bash $REPO_DIR/scripts/termux/durdur.sh"

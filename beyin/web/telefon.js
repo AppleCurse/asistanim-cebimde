@@ -6,6 +6,13 @@ const $ = (s) => document.querySelector(s);
 const guvenli = window.isSecureContext;
 const Tanima = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+// URL'den veya localStorage'dan token al ve sakla
+const urlToken = new URLSearchParams(window.location.search).get('token');
+if (urlToken) {
+  try { localStorage.setItem('asistan_token', urlToken); } catch {}
+}
+const aktifToken = urlToken || (() => { try { return localStorage.getItem('asistan_token'); } catch { return null; } })() || '';
+
 let ws = null;
 let mod = 'tarayici-ses';
 let aktif = false;
@@ -175,7 +182,8 @@ function gonder(nesne) {
 
 function baglan(gorevId) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}/ws/telefon`);
+  const tokenQuery = aktifToken ? `?token=${encodeURIComponent(aktifToken)}` : '';
+  ws = new WebSocket(`${proto}://${location.host}/ws/telefon${tokenQuery}`);
   ws.binaryType = 'arraybuffer';
   ws.onopen = () => {
     gonder({ tip: 'baslat', gorevId: gorevId || undefined, mod });
@@ -253,7 +261,9 @@ function gorusmeBitti(sebep, m = {}) {
 // ---------- UI ----------
 async function gorevleriDoldur() {
   try {
-    const y = await fetch('/api/gorevler');
+    const tokenQuery = aktifToken ? `?token=${encodeURIComponent(aktifToken)}` : '';
+    const basliklar = aktifToken ? { 'Authorization': `Bearer ${aktifToken}` } : {};
+    const y = await fetch(`/api/gorevler${tokenQuery}`, { headers: basliklar });
     const { gorevler } = await y.json();
     const sec = $('#gorev');
     for (const g of gorevler.filter((g) => ['hazir', 'taslak', 'araniyor'].includes(g.durum))) {

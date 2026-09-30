@@ -44,6 +44,9 @@ baslat beyin  node "$REPO_DIR/beyin/index.mjs"
 if command -v proot-distro >/dev/null; then
   baslat baresip proot-distro login --bind /dev/zero:/dev/full ubuntu -- baresip
 fi
+if [[ -f "$REPO_DIR/scripts/termux/tunel.sh" ]]; then
+  baslat tunel bash "$REPO_DIR/scripts/termux/tunel.sh"
+fi
 if [[ "${ENABLE_9REMOTE:-0}" == "1" ]]; then
   baslat 9remote bash "$REPO_DIR/scripts/proot/9remote.sh"
 fi

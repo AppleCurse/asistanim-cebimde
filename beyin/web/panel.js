@@ -7,16 +7,47 @@ const kacir = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;',
 // /bak ile çekilen son görsel: bir sonraki sohbet mesajına eklenir ("bu ne?" diye sorabilmek için)
 let bekleyenGorsel = null;
 
+// URL'den veya localStorage'dan token al ve sakla
+const urlToken = new URLSearchParams(window.location.search).get('token');
+if (urlToken) {
+  try { localStorage.setItem('asistan_token', urlToken); } catch {}
+}
+const aktifToken = urlToken || (() => { try { return localStorage.getItem('asistan_token'); } catch { return null; } })() || '';
+
 async function api(yol, govde) {
-  const y = await fetch('/api' + yol, {
-    method: govde ? 'POST' : 'GET',
-    headers: govde ? { 'Content-Type': 'application/json' } : {},
-    body: govde ? JSON.stringify(govde) : undefined,
-  });
+  const ayirici = yol.includes('?') ? '&' : '?';
+  const url = aktifToken ? `/api${yol}${ayirici}token=${encodeURIComponent(aktifToken)}` : `/api${yol}`;
+  const basliklar = {
+    ...(govde ? { 'Content-Type': 'application/json' } : {}),
+    ...(aktifToken ? { 'Authorization': `Bearer ${aktifToken}` } : {}),
+  };
+  let y;
+  try {
+    y = await fetch(url, {
+      method: govde ? 'POST' : 'GET',
+      headers: basliklar,
+      body: govde ? JSON.stringify(govde) : undefined,
+    });
+  } catch (agHatasi) {
+    throw new Error('Bağlantı hatası (' + agHatasi.message + ')');
+  }
   const veri = await y.json().catch(() => ({}));
-  if (!y.ok) throw new Error(veri.hata || y.statusText);
+  if (!y.ok) {
+    throw new Error(veri.hata || y.statusText || `Sunucu hatası (HTTP ${y.status})`);
+  }
   return veri;
 }
+
+// Sayfa içi linklere token ekle
+document.addEventListener('DOMContentLoaded', () => {
+  if (aktifToken) {
+    document.querySelectorAll('a[href^="/telefon"]').forEach((a) => {
+      if (!a.href.includes('token=')) {
+        a.href += (a.href.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(aktifToken);
+      }
+    });
+  }
+});
 
 function balon(sinif, metin, resim) {
   const d = document.createElement('div');
