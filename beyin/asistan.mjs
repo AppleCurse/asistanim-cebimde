@@ -83,7 +83,9 @@ ${hafiza || '(henüz boş)'}`;
 
     for (let tur = 0; tur <= this.ayar.beyin.maksArac; tur++) {
       const mesajlar = [{ role: 'system', content: this.sistemMesaji() }, ...this._kirp(ot.mesajlar)];
-      const { mesaj, kullanim } = await this.llm.sohbet(mesajlar, { araclar: ARAC_TANIMLARI });
+      // Panel/sohbet yanıtları 350'lik varsayılanla kesiliyordu — 1000'e çıkarıldı.
+      // (Sesli arama motoru kendi kısa limitini motor.mjs içinde ayrıca verir: maksToken 300.)
+      const { mesaj, kullanim } = await this.llm.sohbet(mesajlar, { araclar: ARAC_TANIMLARI, maksToken: 1000 });
       if (kullanim) {
         toplamKullanim.prompt_tokens += kullanim.prompt_tokens || 0;
         toplamKullanim.completion_tokens += kullanim.completion_tokens || 0;
