@@ -257,7 +257,9 @@ export class SipKoprusu {
    *  Yazma hataları sessizce YUTULMAZ: sayar, loglar ve 5 sn sürerse fd'yi kapatıp yoldan
    *  yeniden açar (kendi kendine iyileştirme). Başarı sayacı kanal gözcüsüne beslenir. */
   _sesBesleyiciBaslat() {
-    this._micFdYenidenAc('besleyici başlatma');
+    if (this.inFifoFd == null) {
+      this._fifoKilitleriniAc();
+    }
     if (this.inFifoFd == null) {
       this.log.uyari(`mic.raw açılamadı: kilit yok`);
       return;
@@ -568,6 +570,7 @@ export class SipKoprusu {
     };
 
     // FIFO'ları Baresip açılışı için hemen hazır tut (besleyici sessiz paket basarak saati besler)
+    this._micFdYenidenAc('arama başlangıcı');
     this._sesBesleyiciBaslat();
     this._sesDinleyiciBaslat(gorusme, tasiyici);
 
