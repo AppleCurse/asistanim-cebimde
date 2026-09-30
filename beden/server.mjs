@@ -9,6 +9,7 @@
 import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { ayarYukle, tokenAl, logOlustur, VERI_DIZINI } from '../ortak/ayar.mjs';
 import { TermuxCihaz, termuxMu } from './termux-api.mjs';
@@ -162,6 +163,7 @@ function rotalar(cihaz, ayar) {
 
 export function bedenBaslat({ ayar = ayarYukle(), token = tokenAl('beden'), cihaz = cihazSec(ayar), log = logOlustur('beden'), host, port } = {}) {
   const tablo = rotalar(cihaz, ayar);
+  const beklenenTokenHash = crypto.createHash('sha256').update(String(token)).digest();
 
   const sunucu = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://beden');
@@ -171,7 +173,8 @@ export function bedenBaslat({ ayar = ayarYukle(), token = tokenAl('beden'), ciha
       }
 
       const yetki = req.headers.authorization || '';
-      if (yetki !== `Bearer ${token}`) return jsonYanit(res, 401, { hata: 'yetkisiz' });
+      const gelenTokenHash = crypto.createHash('sha256').update(yetki.startsWith('Bearer ') ? yetki.slice(7) : '').digest();
+      if (!crypto.timingSafeEqual(gelenTokenHash, beklenenTokenHash) || !yetki.startsWith('Bearer ')) return jsonYanit(res, 401, { hata: 'yetkisiz' });
 
       if (req.method === 'GET' && url.pathname.startsWith('/dosya/')) {
         const ad = path.basename(decodeURIComponent(url.pathname.slice('/dosya/'.length)));

@@ -34,7 +34,7 @@ export const HALUSINASYON_KALIPLARI = [
 
 /** STT çıktısı halüsinasyon mu? (filtre: true → at) */
 export function halusinasyonMu(metin) {
-  const temiz = (metin || '').trim();
+  const temiz = String(metin || '').normalize('NFKC').trim().toLocaleLowerCase('tr-TR');
   if (temiz.length < 2) return true;
   return HALUSINASYON_KALIPLARI.some((kalip) => kalip.test(temiz));
 }

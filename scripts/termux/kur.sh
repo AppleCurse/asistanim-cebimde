@@ -9,6 +9,7 @@
 # Seçenekler:  --proot   proot-distro + Ubuntu'yu da kurar (9remote için)
 #              --tls     panel için kendinden imzalı sertifika üretir (mikrofon izni için gerekir)
 set -euo pipefail
+umask 077
 
 if [[ "${PREFIX:-}" != *com.termux* ]]; then
   echo "Bu script Termux içinde çalışmalı." >&2
@@ -49,6 +50,7 @@ adim "~/.asistan hazırlanıyor (ayarlar + tokenlar)"
 export ASISTAN_HOME
 node -e "import('$REPO_DIR/ortak/ayar.mjs').then(m => { m.ayarYukle(); m.tokenAl('beden'); m.tokenAl('beyin'); console.log('ayar:', m.AYAR_DOSYASI); })"
 [[ -f "$REPO_DIR/.env" ]] || cp "$REPO_DIR/.env.example" "$REPO_DIR/.env"
+chmod 600 "$REPO_DIR/.env" 2>/dev/null || true
 
 if [[ $TLS -eq 1 ]]; then
   adim "TLS sertifikası"

@@ -97,7 +97,7 @@ EOF
 # 3. Baresip accounts
 echo "▶ ~/.baresip/accounts yazılıyor"
 cat << EOF > "$HEDEF_HOME/.baresip/accounts"
-<sip:${SIP_USER}@${SIP_SERVER};transport=udp>;auth_user=${SIP_USER};auth_pass=${SIP_PASS};regint=600;rtcp_mux=yes
+<sip:${SIP_USER}@${SIP_SERVER};transport=udp>;auth_user=${SIP_USER};auth_pass=${SIP_PASS};regint=600;outbound="sip:${SIP_SERVER}:${SIP_PORT:-5060};transport=udp";sipnat=outbound;rtcp_mux=yes
 EOF
 chmod 600 "$HEDEF_HOME/.baresip/accounts"
 

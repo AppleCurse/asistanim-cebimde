@@ -31,7 +31,7 @@ if (process.argv.includes('--modeller')) {
 const beden = new BedenIstemci({ url: ayar.beyin.bedenUrl, token: tokenAl('beden') });
 const hafiza = new Hafiza();
 const gorevler = new GorevYoneticisi({ llm, ayar, hafiza, log });
-const cebimon = new Cebimon();
+const cebimon = new Cebimon({ ad: ayar.kullanici.asistanAdi });
 const asistan = new Asistan({ llm, beden, ayar, hafiza, gorevler, cebimon, log });
 
 async function sor(metin) {

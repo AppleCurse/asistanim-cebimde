@@ -80,7 +80,7 @@ function agAdresleri() {
 
 export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bedenToken = tokenAl('beden'), log = logOlustur('beyin'), host, port } = {}) {
   const telemetri = new Telemetri();
-  const cebimon = new Cebimon();
+  const cebimon = new Cebimon({ ad: ayar.kullanici.asistanAdi });
   const llm = new LLMIstemci({ ...ayar.beyin.llm, telemetry: telemetri });
   const aramaAyar = ayar.arama?.llm || {};
   const aramaBaseUrl = aramaAyar.baseUrl || (aramaAyar.model ? '' : llm.baseUrl);
@@ -144,7 +144,7 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
     }
     if (M === 'POST' && yol === '/cebi/planla') {
       if (!govde.talimat?.trim()) throw Object.assign(new Error('talimat gerekli'), { kod: 400 });
-      return cebimon.planla(String(govde.talimat));
+      return cebimon.planlaAkilli(String(govde.talimat), llm);
     }
     if (M === 'POST' && yol === '/cebi/degerlendir') return cebimon.adimDegerlendir({ llm, gorsel: govde.gorsel, ses: govde.ses, mime: govde.mime });
     if (M === 'POST' && yol === '/cebi/onay') {
@@ -154,6 +154,16 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
     if (M === 'POST' && yol === '/cebi/oturum') return cebimon.oturumBaslat({ ortam: govde.ortam, amac: govde.amac, risk: govde.risk });
     if (M === 'POST' && yol === '/cebi/adim') return cebimon.adim(String(govde.metin || ''), govde.durum || 'bekliyor');
     if (M === 'POST' && yol === '/cebi/bitir') return cebimon.oturumBitir({ basarili: govde.basarili !== false, ozet: String(govde.ozet || '') });
+    if (M === 'POST' && yol === '/cebi/temizle') return cebimon.temizle();
+    if (M === 'POST' && yol === '/sese-yazi') {
+      const ses = govde.ses;
+      const mime = String(govde.mime || 'audio/webm').split(';', 1)[0].toLowerCase();
+      if (typeof ses !== 'string' || ses.length > 10_000_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(ses)) throw Object.assign(new Error('geçerli ses kaydı gerekli veya kayıt çok büyük'), { kod: 400 });
+      if (!['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/mpeg'].includes(mime)) throw Object.assign(new Error('desteklenmeyen ses biçimi'), { kod: 400 });
+      const sesBuffer = Buffer.from(ses, 'base64');
+      if (!sesBuffer.length || sesBuffer.length > 7_000_000) throw Object.assign(new Error('ses kaydı geçersiz veya çok büyük'), { kod: 400 });
+      return { metin: await llm.yaziyaCevir(sesBuffer, { mime, dil: 'tr' }) };
+    }
 
     if (M === 'POST' && yol === '/sohbet') {
       if (!govde.metin?.trim() && !govde.resimler?.length) throw Object.assign(new Error('metin gerekli'), { kod: 400 });

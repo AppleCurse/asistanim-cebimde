@@ -125,25 +125,13 @@ export const ARACLAR = [
 
   arac(
     'cebi_planla',
-    'Kullanıcı bir işi bizzat yaparken adım adım yardım istediğinde (ör. arabanın yağını değiştirme, saç örme, belge inceleme, tamir) Cebimonun kalıcı oturumuna bağlam/risk ve görev tahtası oluştur. Telefon araması görevinde kullanma.',
-    { talimat: { type: 'string', description: 'Yapılacak işin kullanıcının kendi cümlesiyle tarifi' } },
-    ['talimat'],
-    async ({ talimat }, { cebimon }) => {
-      if (!cebimon) throw new Error('Cebimon oturumu kullanılamıyor');
-      const oturum = cebimon.planla(talimat);
-      return { metin: `Cebimon görev tahtasını oluşturdu: ${oturum.ortam} ortamı, ${oturum.risk} risk. İlk adım: ${oturum.adimlar[0]?.metin}. Kamera ve mikrofonla adımları doğrulayabiliriz.` };
-    },
-  ),
-
-  arac(
-    'cebi_planla',
-    'Kullanıcı kendi yapacağı uygulamalı bir iş için adım adım yardım istediğinde (ör. araba, kişisel bakım, iş belgesi veya tamir) Cebimonun kalıcı görev tahtasına bağlam ve risk içeren adımlar oluştur. Telefon görüşmesi isteklerinde kullanma.',
+    'Kullanıcı kendi yapacağı uygulamalı bir iş için adım adım yardım istediğinde (ör. araba, kişisel bakım, belge veya tamir) kalıcı görev tahtasına LLM destekli bağlam/risk/adımlar oluştur. Telefon görüşmesi isteklerinde kullanma.',
     { talimat: { type: 'string', description: 'Yapılacak işi kullanıcının kendi cümlesiyle anlat' } },
     ['talimat'],
-    async ({ talimat }, { cebimon }) => {
+    async ({ talimat }, { cebimon, llm }) => {
       if (!cebimon) throw new Error('Cebimon oturumu kullanılamıyor');
-      const oturum = cebimon.planla(talimat);
-      return { metin: `Cebimon görev tahtasını oluşturdu: ${oturum.ortam} ortamı, ${oturum.risk} risk. İlk adım: ${oturum.adimlar[0]?.metin}. Kamera ve mikrofonla adımları doğrulayabiliriz.` };
+      const oturum = await cebimon.planlaAkilli(talimat, llm);
+      return { metin: `Görev tahtasını hazırladım: ${oturum.ortam} ortamı, ${oturum.risk} risk. İlk adım: ${oturum.adimlar[0]?.metin}. Kamera ve mikrofonla adımları doğrulayabiliriz.` };
     },
   ),
 

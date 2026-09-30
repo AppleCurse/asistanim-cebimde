@@ -6,6 +6,7 @@ import http from 'node:http';
 
 export function sahte9RouterBaslat() {
   const istekler = [];
+  const ayarlar = {};
   const sunucu = http.createServer(async (req, res) => {
     const parcalar = [];
     for await (const p of req) parcalar.push(p);
@@ -45,9 +46,20 @@ export function sahte9RouterBaslat() {
           }),
         });
       }
+      // Cebimon iş planı üretimi
+      if (sistem.includes('güvenlik odaklı Türkçe bir iş planlayıcısısın')) {
+        return yanit({ role: 'assistant', content: JSON.stringify({
+          baslik: 'Saç örme', ortam: 'kişisel bakım', risk: 'dusuk', adimlar: [
+            { metin: 'Kamerayı saç hizasına al', aciklama: 'Saçı iyi ışıkta kadraja al.', guvenlik: 'Kamerayı sabitle.' },
+            { metin: 'Bölümleri ayır', aciklama: 'Saçı nazikçe bölümlere ayır.', guvenlik: 'Çekiştirme.' },
+            { metin: 'Örgüyü başlat', aciklama: 'Bölümleri sırayla geçir.', guvenlik: 'Saçı fazla sıkma.' },
+          ],
+        }) });
+      }
       // Cebimon'un görsel/ses adım doğrulaması
       if (sistem.includes('kanıta dayalı ve güvenlik odaklı bir görev adımı doğrulayıcısısın')) {
-        return yanit({ role: 'assistant', content: JSON.stringify({ tamamlandi: true, guvenli: true, guven: 0.94, gozlem: 'Adımın sonucu görüntüde doğrulanıyor.', geri_bildirim: 'Adım tamamlandı.', sonraki_adim: 'Sıradaki adıma geç.' }) });
+        const sonuc = ayarlar.cebiDegerlendirme || { tamamlandi: true, guvenli: true, guven: 0.94, gozlem: 'Adımın sonucu görüntüde doğrulanıyor.', geri_bildirim: 'Adım tamamlandı.', sonraki_adim: 'Sıradaki adıma geç.' };
+        return yanit({ role: 'assistant', content: JSON.stringify(sonuc) });
       }
       // Görüşme özeti
       if (sistem.includes('transkriptini değerlendir')) {
@@ -81,6 +93,6 @@ export function sahte9RouterBaslat() {
   });
 
   return new Promise((coz) => {
-    sunucu.listen(0, '127.0.0.1', () => coz({ sunucu, url: `http://127.0.0.1:${sunucu.address().port}/v1`, istekler }));
+    sunucu.listen(0, '127.0.0.1', () => coz({ sunucu, url: `http://127.0.0.1:${sunucu.address().port}/v1`, istekler, ayarlar }));
   });
 }

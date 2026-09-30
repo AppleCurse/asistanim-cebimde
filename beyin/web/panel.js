@@ -14,6 +14,17 @@ if (urlToken) {
 }
 const aktifToken = urlToken || (() => { try { return localStorage.getItem('asistan_token'); } catch { return null; } })() || '';
 
+let bildirimZamanlayici;
+function bildir(metin, hata = false) {
+  const el = $('#bildirim');
+  if (!el) return;
+  el.textContent = metin;
+  el.classList.toggle('toast-hata', hata);
+  el.hidden = false;
+  clearTimeout(bildirimZamanlayici);
+  bildirimZamanlayici = setTimeout(() => { el.hidden = true; }, 6000);
+}
+
 async function api(yol, govde) {
   const ayirici = yol.includes('?') ? '&' : '?';
   const url = aktifToken ? `/api${yol}${ayirici}token=${encodeURIComponent(aktifToken)}` : `/api${yol}`;
@@ -98,6 +109,7 @@ async function cebimonYukle() {
   try {
     const c = await api('/cebi');
     $('#cebiAd').textContent = c.ad;
+    $('#cebiBaslikAciklama').textContent = `Bir cümleyle işi anlat; ${c.ad} adımları hazırlasın.`;
     $('#cebiSinif').textContent = sinifAdlari[c.sinif] || c.sinif;
     $('#cebiMod').textContent = modAdlari[c.mod] || c.mod;
     $('#cebiCihaz').textContent = c.cihaz?.pil != null ? `Pil %${c.cihaz.pil}${c.cihaz.sicaklik ? ` · ${c.cihaz.sicaklik}°C` : ''}` : 'Cihaz hazır';
@@ -195,19 +207,84 @@ $('#sohbetForm').addEventListener('submit', (e) => {
 
 document.querySelectorAll('[data-hizli]').forEach((b) => b.addEventListener('click', () => sohbetGonder(b.dataset.hizli)));
 
-// Telefonun yerleşik Türkçe konuşma tanıması: sunucuya ses göndermeden, terminal olmadan çalışır.
+// Yerleşik STT çalışmayan iOS/Brave benzeri tarayıcılarda MediaRecorder → sunucu STT yedeği.
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let tani;
+let taniDinliyor = false;
+let yedekKaydedici;
+let yedekAkis;
+let yedekZamanlayici;
+let yedekParcalar = [];
+let yedekBitiriyor = false;
+async function yedekKaydiBaslat() {
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') throw new Error('Bu tarayıcı mikrofon kaydını desteklemiyor.');
+  yedekAkis = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find((m) => MediaRecorder.isTypeSupported?.(m));
+  try { yedekKaydedici = new MediaRecorder(yedekAkis, mime ? { mimeType: mime } : undefined); }
+  catch (h) { yedekAkis.getTracks().forEach((t) => t.stop()); yedekAkis = null; throw new Error('Ses kaydı başlatılamadı: ' + h.message); }
+  yedekParcalar = [];
+  yedekBitiriyor = false;
+  yedekKaydedici.ondataavailable = (e) => { if (e.data.size) yedekParcalar.push(e.data); };
+  yedekKaydedici.onstop = async () => {
+    clearTimeout(yedekZamanlayici);
+    const blob = new Blob(yedekParcalar, { type: yedekKaydedici.mimeType || 'audio/webm' });
+    yedekAkis?.getTracks().forEach((t) => t.stop());
+    yedekAkis = null;
+    $('#mikrofon').classList.remove('dinliyor');
+    $('#mikrofon').textContent = '🎙';
+    try {
+      if (blob.size < 500) throw new Error('Ses çok kısa; tekrar deneyebilirsin.');
+      $('#sesDurumu').textContent = 'Ses yazıya çevriliyor…';
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      const { metin } = await api('/sese-yazi', { ses: btoa(binary), mime: blob.type.split(';')[0] || 'audio/webm' });
+      if (!metin?.trim()) throw new Error('Konuşma anlaşılmadı.');
+      $('#mesaj').value = metin;
+      $('#sesDurumu').textContent = 'Konuşman yazıya çevrildi.';
+      await sohbetGonder(metin);
+    } catch (h) { $('#sesDurumu').textContent = h.message; }
+  };
+  yedekKaydedici.start();
+  $('#mikrofon').classList.add('dinliyor');
+  $('#mikrofon').textContent = '■';
+  $('#sesDurumu').textContent = 'Kaydediyorum… Bitirmek için mikrofon düğmesine tekrar dokun (en çok 30 sn).';
+  yedekZamanlayici = setTimeout(yedekKaydiDurdur, 30_000);
+}
+function yedekKaydiDurdur() {
+  if (yedekKaydedici?.state === 'recording' && !yedekBitiriyor) {
+    yedekBitiriyor = true;
+    clearTimeout(yedekZamanlayici);
+    yedekKaydedici.stop();
+  }
+}
 if (SpeechRecognition) {
-  const tani = new SpeechRecognition();
+  tani = new SpeechRecognition();
   tani.lang = 'tr-TR'; tani.interimResults = false; tani.continuous = false;
-  tani.onstart = () => { $('#mikrofon').classList.add('dinliyor'); $('#sesDurumu').textContent = 'Dinliyorum…'; };
+  tani.onstart = () => { taniDinliyor = true; $('#mikrofon').classList.add('dinliyor'); $('#sesDurumu').textContent = 'Dinliyorum…'; };
   tani.onresult = (e) => { $('#mesaj').value = e.results[0][0].transcript; sohbetGonder(e.results[0][0].transcript); };
-  tani.onerror = () => { $('#sesDurumu').textContent = 'Ses alınamadı. İstersen yazabilirsin.'; };
-  tani.onend = () => { $('#mikrofon').classList.remove('dinliyor'); $('#sesDurumu').textContent = 'Mikrofon düğmesine dokun, konuş; terminal gerekmez.'; };
-  $('#mikrofon').addEventListener('click', () => tani.start());
+  tani.onerror = async (e) => {
+    $('#mikrofon').classList.remove('dinliyor');
+    if (e.error !== 'aborted') {
+      try { $('#sesDurumu').textContent = 'Yerleşik tanıma kullanılamadı; mikrofon yedeği başlatılıyor…'; await yedekKaydiBaslat(); }
+      catch (h) { $('#sesDurumu').textContent = `${h.message} İstersen yazıyla devam et.`; }
+    }
+  };
+  tani.onend = () => { taniDinliyor = false; if (yedekKaydedici?.state !== 'recording') { $('#mikrofon').classList.remove('dinliyor'); $('#sesDurumu').textContent = 'Mikrofon düğmesine dokun, konuş; terminal gerekmez.'; } };
+  $('#mikrofon').addEventListener('click', () => {
+    if (yedekKaydedici?.state === 'recording') { yedekKaydiDurdur(); return; }
+    if (taniDinliyor) { tani.stop(); return; }
+    try { tani.start(); } catch { yedekKaydiBaslat().catch((h) => { $('#sesDurumu').textContent = h.message; }); }
+  });
+} else if (navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined') {
+  $('#mikrofon').addEventListener('click', () => {
+    if (yedekKaydedici?.state === 'recording') yedekKaydiDurdur();
+    else yedekKaydiBaslat().catch((h) => { $('#sesDurumu').textContent = h.message; });
+  });
+  $('#sesDurumu').textContent = 'Düğmeye dokunup konuş, bitirmek için tekrar dokun.';
 } else {
   $('#mikrofon').disabled = true;
-  $('#sesDurumu').textContent = 'Bu tarayıcı sesli yazmayı desteklemiyor; yazıyla devam edebilirsin.';
+  $('#sesDurumu').textContent = 'Bu tarayıcı ses kaydını desteklemiyor; yazıyla devam edebilirsin.';
 }
 
 $('#bak').addEventListener('click', async () => {
@@ -239,6 +316,15 @@ $('#sifirla').addEventListener('click', async () => {
   balon('sistem', 'sohbet sıfırlandı');
 });
 
+$('#cebiTemizle').addEventListener('click', async () => {
+  if (!confirm('Cebimon görev oturumu ve geçmişi bu cihazdan silinsin mi?')) return;
+  try {
+    await api('/cebi/temizle', {});
+    await cebimonYukle();
+    bildir('Görev oturumu ve geçmiş temizlendi.');
+  } catch (h) { bildir('Geçmiş temizlenemedi: ' + h.message, true); }
+});
+
 $('#cebiPlanForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const talimat = $('#cebiTalimat').value.trim();
@@ -249,7 +335,7 @@ $('#cebiPlanForm').addEventListener('submit', async (e) => {
     await api('/cebi/planla', { talimat });
     $('#cebiTalimat').value = '';
     await cebimonYukle();
-  } catch (h) { alert('Görev planı oluşturulamadı: ' + h.message); }
+  } catch (h) { bildir('Görev planı oluşturulamadı: ' + h.message, true); }
   finally { dugme.disabled = false; }
 });
 
@@ -304,7 +390,7 @@ async function cebiAdimKaydiAc() {
       const sonuc = await api('/cebi/degerlendir', { gorsel, ses: btoa(binary), mime: blob.type || 'audio/webm' });
       cebiAkisiDurdur();
       $('#cebiAdimDialog').close();
-      alert(`${sonuc.onayGerekli ? 'Güvenlik nedeniyle onay gerekiyor.' : sonuc.adimTamamlandi ? 'Adım tamamlandı.' : 'Kanıt yetersiz; adım açık kaldı.'}\n${sonuc.inceleme.geriBildirim || sonuc.inceleme.gozlem}`);
+      bildir(`${sonuc.onayGerekli ? 'Güvenlik nedeniyle onay gerekiyor.' : sonuc.adimTamamlandi ? 'Adım tamamlandı.' : 'Kanıt yetersiz; adım açık kaldı.'} ${sonuc.inceleme.geriBildirim || sonuc.inceleme.gozlem}`, !sonuc.adimTamamlandi);
       await cebimonYukle();
     } catch (h) {
       $('#cebiKayitDurumu').textContent = 'Hata: ' + h.message;
@@ -326,7 +412,7 @@ $('#cebiTahta').addEventListener('click', async (e) => {
       await api('/cebi/bitir', { basarili: true, ozet: 'Görev adımları kamera ve mikrofon değerlendirmeleriyle tamamlandı.' });
       await cebimonYukle();
     }
-  } catch (h) { alert('Cebimon: ' + h.message); }
+  } catch (h) { bildir('Görev tahtası: ' + h.message, true); }
 });
 
 $('#gorevForm').addEventListener('submit', async (e) => {
@@ -343,7 +429,7 @@ $('#gorevForm').addEventListener('submit', async (e) => {
     $('#numara').value = '';
     await gorevleriYukle();
   } catch (h) {
-    alert('Hata: ' + h.message);
+    bildir('Hata: ' + h.message, true);
   } finally {
     dugme.disabled = false;
     dugme.textContent = 'Planla';
@@ -363,16 +449,16 @@ $('#gorevler').addEventListener('click', async (e) => {
     if (b.dataset.eylem === 'voip') {
       if (!confirm('Asistan bu numarayı VoIP hattından arayacak ve kendi sesiyle konuşacak. Devam?')) return;
       const s = await api(`/gorevler/${id}/voip-ara`, {});
-      alert('Çağrı başlatıldı: ' + s.numara + (s.not ? '\n\n' + s.not : ''));
+      bildir('Çağrı başlatıldı: ' + s.numara + (s.not ? ' — ' + s.not : ''));
     }
     if (b.dataset.eylem === 'hucresel') {
       if (!confirm('Eski telefonun hattından bu numara çevrilecek. Bu modda asistan konuşamaz; brifing burada gösterilir. Devam?')) return;
       const s = await api(`/gorevler/${id}/hucresel-ara`, {});
-      alert(`Çevriliyor: ${s.arandi}\n\nAçılış: ${s.brifing.acilis || ''}\n\nNoktalar:\n- ${(s.brifing.konusma_noktalari || []).join('\n- ')}`);
+      bildir(`Çevriliyor: ${s.arandi}. Açılış: ${s.brifing.acilis || ''}. Konuşma noktaları: ${(s.brifing.konusma_noktalari || []).join('; ')}`);
     }
     await gorevleriYukle();
   } catch (h) {
-    alert('Hata: ' + h.message);
+    bildir('Hata: ' + h.message, true);
   }
 });
 

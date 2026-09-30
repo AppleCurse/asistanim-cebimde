@@ -118,11 +118,45 @@ test('Cebimon sohbetten doğal uygulamalı istek alıp kalıcı canlı görev ta
   const { durum, veri } = await api('/sohbet', { oturum: 'cebi-plan', metin: 'Kızımın saçını örmeme yardım et' });
   assert.equal(durum, 200);
   assert.ok(veri.adimlar.some((a) => a.arac === 'cebi_planla'));
-  assert.match(veri.metin, /Cebimon görev tahtasını oluşturdu/);
+  assert.match(veri.metin, /Görev tahtasını hazırladım/);
   const { veri: c } = await api('/cebi');
   assert.equal(c.oturum.ortam, 'kişisel bakım');
   assert.equal(c.oturum.adimlar[0].durum, 'aktif');
   assert.equal(c.oturum.adimlar[1].durum, 'bekliyor');
+});
+
+test('Cebimon plan API LLM planını kalıcılaştırır, risk etiketinde fail-closed kalır', async () => {
+  const { durum, veri } = await api('/cebi/planla', { talimat: 'Kızımın saçını örmeme yardım et' });
+  assert.equal(durum, 200);
+  assert.equal(veri.planKaynak, 'llm');
+  assert.equal(veri.adimlar.length, 3);
+  assert.equal(veri.adimlar[0].durum, 'aktif');
+  assert.equal(veri.risk, 'dusuk', 'LLM, yerel kişisel bakım sınıflandırmasını değiştirmez');
+  const { durum: temizDurum, veri: temiz } = await api('/cebi/planla', { talimat: 'Elektrik panosunu onarmama yardım et' });
+  assert.equal(temizDurum, 200);
+  assert.equal(temiz.risk, 'yuksek');
+});
+
+test('tarayıcı mikrofon yedeği için korumalı Türkçe STT API’si', async () => {
+  const { durum, veri } = await api('/sese-yazi', { ses: Buffer.from('sahte ses').toString('base64'), mime: 'audio/webm' });
+  assert.equal(durum, 200);
+  assert.equal(veri.metin, 'sahte transkript');
+  const codecs = await api('/sese-yazi', { ses: Buffer.from('sahte ses').toString('base64'), mime: 'audio/webm;codecs=opus' });
+  assert.equal(codecs.durum, 200);
+  const buyuk = await api('/sese-yazi', { ses: '!', mime: 'audio/webm' });
+  assert.equal(buyuk.durum, 400);
+  const mime = await api('/sese-yazi', { ses: Buffer.from('x').toString('base64'), mime: 'text/plain' });
+  assert.equal(mime.durum, 400);
+});
+
+test('Cebimon kişisel verileri silme rotası geçmişi sıfırlar', async () => {
+  await api('/cebi/planla', { talimat: 'Bir belgeyi düzenle' });
+  await api('/cebi/bitir', { basarili: false, ozet: 'yarıda kaldı' });
+  const { durum, veri } = await api('/cebi/temizle', {});
+  assert.equal(durum, 200);
+  assert.equal(veri.oturum, null);
+  assert.equal(veri.gecmis.length, 0);
+  assert.equal(veri.ad, 'Aspasia');
 });
 
 test('Cebimon plan API kamera ve mikrofon kanıtını LLM ile değerlendirip aktif adımı ilerletir', async () => {
@@ -141,6 +175,23 @@ test('Cebimon plan API kamera ve mikrofon kanıtını LLM ile değerlendirip akt
   assert.ok(sonuc.inceleme.gozlem);
   const { veri: kalici } = await api('/cebi');
   assert.equal(kalici.oturum.adimlar[0].durum, 'tamamlandi');
+});
+
+test('Cebimon değerlendirmesi fail-closed: string false veya güvenlik alanı eksikliği tamamlatmaz', async () => {
+  await api('/cebi/planla', { talimat: 'Bir belgeyi incele' });
+  sahte.ayarlar.cebiDegerlendirme = { tamamlandi: 'false', guven: 0.99, gozlem: 'Şüpheli yanıt' };
+  try {
+    const { durum, veri } = await api('/cebi/degerlendir', {
+      gorsel: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/',
+      ses: Buffer.from('sahte ses').toString('base64'), mime: 'audio/webm',
+    });
+    assert.equal(durum, 200);
+    assert.equal(veri.adimTamamlandi, false);
+    assert.equal(veri.inceleme.guvenli, false);
+    assert.equal(veri.oturum.adimlar[0].durum, 'aktif');
+  } finally { delete sahte.ayarlar.cebiDegerlendirme; }
+  const { durum: durumBypass } = await api('/cebi/adim', { metin: 'Atlama denemesi', durum: 'tamamlandi' });
+  assert.equal(durumBypass, 400);
 });
 
 test('Cebimon yüksek riskli adımı kullanıcı onayı olmadan ilerletmez', async () => {
