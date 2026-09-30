@@ -46,6 +46,7 @@ pcm.mic {
     slave {
         pcm {
             type file
+            file "/dev/null"
             infile "/tmp/mic.raw"
             format "raw"
             slave {
