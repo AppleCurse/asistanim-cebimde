@@ -47,10 +47,12 @@ async function durumYukle() {
     const yasiyor = d.beden?.durum === 'yasiyor';
     $('#nabiz').className = 'nabiz' + (yasiyor ? ' yasiyor' : '');
     const pil = yasiyor ? await api('/pil', {}).catch(() => null) : null;
+    const maliyet = await api('/maliyet?gun=1').catch(() => null);
     const rozet = (b, s) => `<div class="rozet"><b>${kacir(b)}</b><span>${s}</span></div>`;
     $('#durum').innerHTML =
       rozet('Beden', yasiyor ? `yaşıyor (${kacir(d.beden.mod)})` : '<span class="hata">ulaşılamıyor</span>') +
       rozet('Pil', pil ? `%${kacir(pil.percentage)} ${pil.status === 'CHARGING' ? '⚡' : ''} ${pil.temperature ? kacir(pil.temperature) + '°C' : ''}` : '—') +
+      rozet('Bugün', maliyet ? `${kacir(maliyet.token)} token · ${kacir(maliyet.maliyetTL)} TL` : '—') +
       rozet('LLM', kacir(d.llm.model)) +
       rozet('Kulak / Ağız', `${kacir(d.llm.stt)} / ${kacir(d.llm.tts)}`) +
       rozet('Çalışma', `${Math.floor(d.calismaSuresi / 3600)}s ${Math.floor((d.calismaSuresi % 3600) / 60)}dk`) +
@@ -90,10 +92,8 @@ async function gorevleriYukle() {
     .join('');
 }
 
-$('#sohbetForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const metin = $('#mesaj').value.trim();
-  if (!metin) return;
+async function sohbetGonder(metin) {
+  if (!metin?.trim()) return;
   $('#mesaj').value = '';
   balon('sen', metin);
   $('#gonder').disabled = true;
@@ -109,10 +109,30 @@ $('#sohbetForm').addEventListener('submit', async (e) => {
   } catch (h) {
     bekle.textContent = 'Hata: ' + h.message;
     bekle.classList.add('hata');
-  } finally {
-    $('#gonder').disabled = false;
-  }
+  } finally { $('#gonder').disabled = false; }
+}
+
+$('#sohbetForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  sohbetGonder($('#mesaj').value.trim());
 });
+
+document.querySelectorAll('[data-hizli]').forEach((b) => b.addEventListener('click', () => sohbetGonder(b.dataset.hizli)));
+
+// Telefonun yerleşik Türkçe konuşma tanıması: sunucuya ses göndermeden, terminal olmadan çalışır.
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SpeechRecognition) {
+  const tani = new SpeechRecognition();
+  tani.lang = 'tr-TR'; tani.interimResults = false; tani.continuous = false;
+  tani.onstart = () => { $('#mikrofon').classList.add('dinliyor'); $('#sesDurumu').textContent = 'Dinliyorum…'; };
+  tani.onresult = (e) => { $('#mesaj').value = e.results[0][0].transcript; sohbetGonder(e.results[0][0].transcript); };
+  tani.onerror = () => { $('#sesDurumu').textContent = 'Ses alınamadı. İstersen yazabilirsin.'; };
+  tani.onend = () => { $('#mikrofon').classList.remove('dinliyor'); $('#sesDurumu').textContent = 'Mikrofon düğmesine dokun, konuş; terminal gerekmez.'; };
+  $('#mikrofon').addEventListener('click', () => tani.start());
+} else {
+  $('#mikrofon').disabled = true;
+  $('#sesDurumu').textContent = 'Bu tarayıcı sesli yazmayı desteklemiyor; yazıyla devam edebilirsin.';
+}
 
 $('#bak').addEventListener('click', async () => {
   const bekle = balon('sistem', 'kameraya bakıyor…');
