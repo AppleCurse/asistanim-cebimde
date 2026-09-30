@@ -106,7 +106,7 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
   const beden = new BedenIstemci({ url: ayar.beyin.bedenUrl, token: bedenToken });
   const hafiza = new Hafiza();
   const gorevler = new GorevYoneticisi({ llm, ayar, hafiza, log });
-  const asistan = new Asistan({ llm, beden, ayar, hafiza, gorevler, log });
+  const asistan = new Asistan({ llm, beden, ayar, hafiza, gorevler, cebimon, log });
   const sipKoprusu = new SipKoprusu({ llm: aramaLlm, gorevler, ayar, log });
 
   const yetkiliMi = (req, url) => {
@@ -141,6 +141,15 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
       const bedenDurum = await beden.saglik();
       const pil = bedenDurum.durum === 'yasiyor' ? await beden.pil().catch(() => null) : null;
       return cebimon.durum({ pil, beden: bedenDurum, maliyet: telemetri.rapor({ gun: 1 }) });
+    }
+    if (M === 'POST' && yol === '/cebi/planla') {
+      if (!govde.talimat?.trim()) throw Object.assign(new Error('talimat gerekli'), { kod: 400 });
+      return cebimon.planla(String(govde.talimat));
+    }
+    if (M === 'POST' && yol === '/cebi/degerlendir') return cebimon.adimDegerlendir({ llm, gorsel: govde.gorsel, ses: govde.ses, mime: govde.mime });
+    if (M === 'POST' && yol === '/cebi/onay') {
+      if (typeof govde.onay !== 'boolean') throw Object.assign(new Error('onay true/false olmalı'), { kod: 400 });
+      return cebimon.adimOnayla(govde.onay);
     }
     if (M === 'POST' && yol === '/cebi/oturum') return cebimon.oturumBaslat({ ortam: govde.ortam, amac: govde.amac, risk: govde.risk });
     if (M === 'POST' && yol === '/cebi/adim') return cebimon.adim(String(govde.metin || ''), govde.durum || 'bekliyor');
@@ -284,7 +293,7 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
     }
   });
 
-  return { sunucu, asistan, gorevler, llm, beden, hafiza, token };
+  return { sunucu, asistan, gorevler, cebimon, llm, beden, hafiza, token };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

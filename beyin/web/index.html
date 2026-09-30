@@ -31,6 +31,15 @@
     </section>
 
     <section class="kart">
+      <div class="baslik-satiri"><div><h2>Görev tahtası</h2><p class="soluk alt-baslik">Bir cümleyle işi anlat; Cebimon adımları hazırlasın.</p></div></div>
+      <form id="cebiPlanForm">
+        <textarea id="cebiTalimat" placeholder="Örn: Arabanın yağını değiştireceğim, yardım et; kızımın saçını örmeme yardım et; şunu tamir edeceğim"></textarea>
+        <div class="satir"><button class="buton birincil" type="submit">Planı oluştur</button></div>
+      </form>
+      <div id="cebiTahta" style="margin-top:12px"></div>
+    </section>
+
+    <section class="kart">
       <h2>Yaşam belirtileri</h2>
       <div class="izgara" id="durum">
         <div class="rozet"><b>Beden</b><span>…</span></div>
@@ -78,6 +87,15 @@
     </section>
   </main>
 
+  <dialog id="cebiAdimDialog" class="adim-dialog">
+    <div class="kart">
+      <h2>Adımı kamera ve sesle doğrula</h2>
+      <p id="cebiAdimMetni"></p>
+      <video id="cebiVideo" autoplay playsinline muted></video>
+      <p id="cebiKayitDurumu" class="soluk">Adımı uygula, ardından kaydı başlat.</p>
+      <div class="eylemler"><button id="cebiKaydet" class="buton birincil" type="button">🎙 5 sn kaydet ve değerlendir</button><button id="cebiKapat" class="buton" type="button">Kapat</button></div>
+    </div>
+  </dialog>
   <script src="/statik/panel.js"></script>
 </body>
 </html>

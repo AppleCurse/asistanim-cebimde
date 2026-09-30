@@ -11,6 +11,7 @@ import { BedenIstemci } from './beden-istemci.mjs';
 import { Hafiza } from './hafiza.mjs';
 import { GorevYoneticisi } from './gorev.mjs';
 import { Asistan } from './asistan.mjs';
+import { Cebimon } from './cebi.mjs';
 
 const ayar = ayarYukle();
 const log = logOlustur('cli');
@@ -30,7 +31,8 @@ if (process.argv.includes('--modeller')) {
 const beden = new BedenIstemci({ url: ayar.beyin.bedenUrl, token: tokenAl('beden') });
 const hafiza = new Hafiza();
 const gorevler = new GorevYoneticisi({ llm, ayar, hafiza, log });
-const asistan = new Asistan({ llm, beden, ayar, hafiza, gorevler, log });
+const cebimon = new Cebimon();
+const asistan = new Asistan({ llm, beden, ayar, hafiza, gorevler, cebimon, log });
 
 async function sor(metin) {
   const { metin: yanit, adimlar } = await asistan.yanitla('cli', metin, { onAdim: (a) => console.log(`  ⚙ ${a.arac}(${JSON.stringify(a.args)})`) });

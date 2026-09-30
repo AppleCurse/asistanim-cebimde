@@ -45,6 +45,10 @@ export function sahte9RouterBaslat() {
           }),
         });
       }
+      // Cebimon'un görsel/ses adım doğrulaması
+      if (sistem.includes('kanıta dayalı ve güvenlik odaklı bir görev adımı doğrulayıcısısın')) {
+        return yanit({ role: 'assistant', content: JSON.stringify({ tamamlandi: true, guvenli: true, guven: 0.94, gozlem: 'Adımın sonucu görüntüde doğrulanıyor.', geri_bildirim: 'Adım tamamlandı.', sonraki_adim: 'Sıradaki adıma geç.' }) });
+      }
       // Görüşme özeti
       if (sistem.includes('transkriptini değerlendir')) {
         return yanit({ role: 'assistant', content: '```json\n{"basarili": true, "ozet": "Toplantı 16:00’a alındı.", "kararlar": ["Yarın 16:00"], "takip": ["Takvimi güncelle"], "not": null}\n```' });
@@ -56,6 +60,9 @@ export function sahte9RouterBaslat() {
       }
       // Araç döngüsü
       if (son.role === 'tool') return yanit({ role: 'assistant', content: `Araç sonucu: ${son.content}` });
+      if (/saçını ör|tamir edeceğim|arabaya bak|yağını değiştireceğim/i.test(kullaniciMetni) && govde.tools?.some((t) => t.function.name === 'cebi_planla')) {
+        return yanit({ role: 'assistant', content: null, tool_calls: [{ id: 'cp1', type: 'function', function: { name: 'cebi_planla', arguments: JSON.stringify({ talimat: kullaniciMetni }) } }] }, 'tool_calls');
+      }
       if (/pil/i.test(kullaniciMetni) && govde.tools?.some((t) => t.function.name === 'pil_durumu')) {
         return yanit({ role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'pil_durumu', arguments: '{}' } }] }, 'tool_calls');
       }

@@ -8,12 +8,13 @@ import { SOHBET_DIZINI } from '../ortak/ayar.mjs';
 const MAKS_MESAJ = 40;
 
 export class Asistan {
-  constructor({ llm, beden, ayar, hafiza, gorevler, log }) {
+  constructor({ llm, beden, ayar, hafiza, gorevler, cebimon, log }) {
     this.llm = llm;
     this.beden = beden;
     this.ayar = ayar;
     this.hafiza = hafiza;
     this.gorevler = gorevler;
+    this.cebimon = cebimon;
     this.log = log;
     this.oturumlar = new Map();
   }
@@ -36,6 +37,7 @@ telefon hattı ve SMS ellerin. ${kullanici} sana çoğunlukla uzaktan (cebindeki
 - Türkçe, samimi ama net konuş. Kısa yanıt ver; gerekmedikçe uzun açıklama yapma.
 - Bir şeyi görmen/duyman/yapman istendiğinde önce uygun aracı kullan, sonra sonucu yorumla. Yapamıyorsan nedenini dürüstçe söyle.
 - Telefon görüşmesi gerektiren istekleri ("X'i ara ve ... söyle") gorev_olustur ile planla; aramayı kullanıcı panelden onaylar.
+- Kullanıcı yapacağı uygulamalı bir iş için yardım istiyorsa, doğal talimatından kalıcı kamera/mikrofon oturumu ve adım tahtası oluşturmak için cebi_planla aracını kullan; basit bilgi sorularında plan açma.
 - Önemli tercih, kişi ve sonuçları hatirla aracıyla kalıcı hafızaya yaz. Uydurma; emin değilsen sor.
 - Kullanıcının izni olmadan üçüncü kişilere bilgi verme, para/ücret taahhüdünde bulunma.
 
@@ -77,7 +79,7 @@ ${hafiza || '(henüz boş)'}`;
     this._gunluk(oturumId, { rol: 'user', metin: kullaniciMetni });
 
     const adimlar = [];
-    const ctx = { beden: this.beden, llm: this.llm, hafiza: this.hafiza, gorevler: this.gorevler, ayar: this.ayar, log: this.log };
+    const ctx = { beden: this.beden, llm: this.llm, hafiza: this.hafiza, gorevler: this.gorevler, cebimon: this.cebimon, ayar: this.ayar, log: this.log };
     let toplamKullanim = { prompt_tokens: 0, completion_tokens: 0 };
     let sonMetin = '';
 

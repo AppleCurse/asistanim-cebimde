@@ -73,6 +73,27 @@ function adimNotu(adimlar) {
 
 const sinifAdlari = { kivilcim: 'Kıvılcım', nobetci: 'Nöbetçi', sekreter: 'Sekreter', gezgin: 'Gezgin', operator: 'Operatör', usta: 'Usta' };
 const modAdlari = { hazir: 'Hazır', nobette: 'Nöbette', dusunuyor: 'Düşünüyor', konusuyor: 'Konuşuyor', supheli: 'Onay bekliyor', yarali: 'Desteğe ihtiyacı var' };
+function cebiTahtayiCiz(oturum) {
+  const hedef = $('#cebiTahta');
+  if (!oturum) { hedef.innerHTML = '<p class="soluk">Henüz açık bir iş planı yok.</p>'; return; }
+  const adimlar = (oturum.adimlar || []).map((a) => {
+    const ikon = a.durum === 'tamamlandi' ? '✓' : a.durum === 'aktif' ? '→' : a.durum === 'onay_bekliyor' ? '!' : '○';
+    const inceleme = a.incelemeler?.at(-1);
+    return `<li class="plan-adim ${kacir(a.durum)}"><b>${ikon} ${kacir(a.metin)}</b>${inceleme ? `<p class="soluk">${kacir(inceleme.geriBildirim || inceleme.gozlem)} · güven %${Math.round(inceleme.guven * 100)}</p>` : ''}</li>`;
+  }).join('');
+  const aktif = oturum.adimlar?.find((a) => a.durum === 'aktif');
+  const bekleyen = oturum.adimlar?.find((a) => a.durum === 'onay_bekliyor');
+  hedef.innerHTML = `<div class="cebi-plan-kart">
+    <div class="ust"><strong>${kacir(oturum.ortam)} · ${kacir(oturum.risk)} risk</strong><span class="hazir-rozet">${oturum.tamamlandi ? 'Tamamlandı' : oturum.bekleyenOnay ? 'Onay bekliyor' : 'Devam ediyor'}</span></div>
+    <p class="soluk">${kacir(oturum.amac)}</p><ol class="plan-adimlar">${adimlar}</ol>
+    <div class="eylemler">
+      ${aktif ? '<button class="buton birincil" data-cebi-eylem="incele">📷🎙 Aktif adımı doğrula</button>' : ''}
+      ${bekleyen ? '<button class="buton birincil" data-cebi-eylem="onay">Adımı onayla</button><button class="buton tehlike" data-cebi-eylem="reddet">Onaylama</button>' : ''}
+      ${oturum.tamamlandi ? '<button class="buton" data-cebi-eylem="bitir">Oturumu bitir</button>' : ''}
+    </div>
+  </div>`;
+}
+
 async function cebimonYukle() {
   try {
     const c = await api('/cebi');
@@ -82,6 +103,7 @@ async function cebimonYukle() {
     $('#cebiCihaz').textContent = c.cihaz?.pil != null ? `Pil %${c.cihaz.pil}${c.cihaz.sicaklik ? ` · ${c.cihaz.sicaklik}°C` : ''}` : 'Cihaz hazır';
     $('#cebiMesaj').textContent = c.oturum ? `${c.oturum.ortam} · ${c.oturum.amac || 'yanında çalışıyor'}` : (c.gunluk?.notlar?.at(-1)?.metin || 'Ben buradayım. Bana ne yapacağını öğret.');
     $('#cebiYuz').textContent = c.mod === 'yarali' ? '!' : c.mod === 'dusunuyor' ? '…' : '✦';
+    cebiTahtayiCiz(c.oturum);
   } catch { $('#cebiMesaj').textContent = 'Bağlantı kuruluyor…'; }
 }
 
@@ -158,6 +180,7 @@ async function sohbetGonder(metin) {
     adimNotu(y.adimlar);
     balon('asistan', y.metin || '(boş yanıt)');
     if (y.adimlar?.some((a) => a.arac === 'gorev_olustur')) gorevleriYukle();
+    if (y.adimlar?.some((a) => a.arac === 'cebi_planla')) cebimonYukle();
     if (y.adimlar?.some((a) => a.arac === 'hatirla')) hafizaYukle();
   } catch (h) {
     bekle.textContent = 'Hata: ' + h.message;
@@ -214,6 +237,96 @@ $('#sifirla').addEventListener('click', async () => {
   await api('/sohbet/sifirla', { oturum: 'panel' });
   $('#sohbet').innerHTML = '';
   balon('sistem', 'sohbet sıfırlandı');
+});
+
+$('#cebiPlanForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const talimat = $('#cebiTalimat').value.trim();
+  if (!talimat) return;
+  const dugme = e.target.querySelector('button');
+  dugme.disabled = true;
+  try {
+    await api('/cebi/planla', { talimat });
+    $('#cebiTalimat').value = '';
+    await cebimonYukle();
+  } catch (h) { alert('Görev planı oluşturulamadı: ' + h.message); }
+  finally { dugme.disabled = false; }
+});
+
+let cebiAkis = null;
+function cebiAkisiDurdur() {
+  cebiAkis?.getTracks().forEach((t) => t.stop());
+  cebiAkis = null;
+  $('#cebiVideo').srcObject = null;
+}
+$('#cebiKapat').addEventListener('click', () => { cebiAkisiDurdur(); $('#cebiAdimDialog').close(); });
+$('#cebiAdimDialog').addEventListener('close', cebiAkisiDurdur);
+
+async function cebiAdimKaydiAc() {
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') throw new Error('Kamera/mikrofon için HTTPS ve desteklenen tarayıcı gerekli.');
+  const c = await api('/cebi');
+  const adim = c.oturum?.adimlar?.find((a) => a.durum === 'aktif');
+  if (!adim) throw new Error('Açık görev adımı bulunamadı.');
+  cebiAkisiDurdur();
+  cebiAkis = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 800 } }, audio: true });
+  $('#cebiVideo').srcObject = cebiAkis;
+  $('#cebiAdimMetni').textContent = adim.metin;
+  $('#cebiKayitDurumu').textContent = 'Adımı yaptıktan sonra kısa sesli açıklama kaydı başlat.';
+  $('#cebiAdimDialog').showModal();
+  $('#cebiKaydet').onclick = async () => {
+    const dugme = $('#cebiKaydet');
+    dugme.disabled = true;
+    $('#cebiKayitDurumu').textContent = 'Dinliyorum… Adımın sonucunu anlat.';
+    try {
+      const kaydedici = new MediaRecorder(new MediaStream(cebiAkis.getAudioTracks()));
+      const parcaciklar = [];
+      kaydedici.ondataavailable = (e) => { if (e.data.size) parcaciklar.push(e.data); };
+      const bitis = new Promise((resolve, reject) => {
+        kaydedici.onstop = () => resolve(new Blob(parcaciklar, { type: kaydedici.mimeType || 'audio/webm' }));
+        kaydedici.onerror = () => reject(new Error('Ses kaydı alınamadı.'));
+      });
+      kaydedici.start();
+      await new Promise((r) => setTimeout(r, 5000));
+      if (kaydedici.state !== 'inactive') kaydedici.stop();
+      const blob = await bitis;
+      const video = $('#cebiVideo');
+      if (!video.videoWidth) throw new Error('Kamera görüntüsü hazır değil.');
+      const canvas = document.createElement('canvas');
+      const oran = Math.min(1, 800 / video.videoWidth);
+      canvas.width = Math.round(video.videoWidth * oran);
+      canvas.height = Math.round(video.videoHeight * oran);
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      const gorsel = canvas.toDataURL('image/jpeg', 0.78);
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      $('#cebiKayitDurumu').textContent = 'Cebimon görüntü ve sesi değerlendiriyor…';
+      const sonuc = await api('/cebi/degerlendir', { gorsel, ses: btoa(binary), mime: blob.type || 'audio/webm' });
+      cebiAkisiDurdur();
+      $('#cebiAdimDialog').close();
+      alert(`${sonuc.onayGerekli ? 'Güvenlik nedeniyle onay gerekiyor.' : sonuc.adimTamamlandi ? 'Adım tamamlandı.' : 'Kanıt yetersiz; adım açık kaldı.'}\n${sonuc.inceleme.geriBildirim || sonuc.inceleme.gozlem}`);
+      await cebimonYukle();
+    } catch (h) {
+      $('#cebiKayitDurumu').textContent = 'Hata: ' + h.message;
+      dugme.disabled = false;
+    }
+  };
+}
+
+$('#cebiTahta').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-cebi-eylem]');
+  if (!b) return;
+  try {
+    if (b.dataset.cebiEylem === 'incele') await cebiAdimKaydiAc();
+    if (b.dataset.cebiEylem === 'onay' || b.dataset.cebiEylem === 'reddet') {
+      await api('/cebi/onay', { onay: b.dataset.cebiEylem === 'onay' });
+      await cebimonYukle();
+    }
+    if (b.dataset.cebiEylem === 'bitir') {
+      await api('/cebi/bitir', { basarili: true, ozet: 'Görev adımları kamera ve mikrofon değerlendirmeleriyle tamamlandı.' });
+      await cebimonYukle();
+    }
+  } catch (h) { alert('Cebimon: ' + h.message); }
 });
 
 $('#gorevForm').addEventListener('submit', async (e) => {

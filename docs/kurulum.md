@@ -100,6 +100,8 @@ Tarayıcılar mikrofonu ve konuşma tanımayı yalnızca **güvenli bağlamda** 
 - Chrome'da `chrome://flags/#unsafely-treat-insecure-origin-as-secure` → `http://192.168.x.y:20131` ekle → HTTP ile de mikrofon açılır.
 - Tailscale + HTTPS sertifikası (yukarıdaki gibi).
 
+Cebimon'un **Görev tahtası** adımlarını kamera/mikrofonla doğrulamak için de tarayıcı izinleri gerekir. Kullanıcıdan her kayıt öncesi tarayıcı izin ister; 5 saniyelik kayıt ve bir kare, STT/LLM incelemesi için yapılandırılmış sağlayıcıya gönderilir. Hassas belgeleri kadraja almadan önce kontrol et. Medya dosyaları kaydedilmez; konuşma transkripti ve değerlendirme notu kalıcı Cebimon oturumunda tutulur. Yüksek riskli adım panelde ayrıca kullanıcı onayı olmadan ilerlemez.
+
 Yazılım telefonunda **"Tarayıcı sesi"** modu Android Chrome'da en iyi çalışır (Türkçe tanıma + Google TTS sesleri). iOS Safari'de tanıma yoktur; yazarak konuşabilirsin, yanıtlar yine seslendirilir.
 
 ## 7. proot Ubuntu + 9remote (isteğe bağlı, "sinir sistemi")

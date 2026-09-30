@@ -114,6 +114,58 @@ test('sohbet: bak aracı görüntüyü sonraki mesaja ekler', async () => {
   assert.equal(sonIstek.messages[idx + 1].role, 'tool');
 });
 
+test('Cebimon sohbetten doğal uygulamalı istek alıp kalıcı canlı görev tahtası oluşturur', async () => {
+  const { durum, veri } = await api('/sohbet', { oturum: 'cebi-plan', metin: 'Kızımın saçını örmeme yardım et' });
+  assert.equal(durum, 200);
+  assert.ok(veri.adimlar.some((a) => a.arac === 'cebi_planla'));
+  assert.match(veri.metin, /Cebimon görev tahtasını oluşturdu/);
+  const { veri: c } = await api('/cebi');
+  assert.equal(c.oturum.ortam, 'kişisel bakım');
+  assert.equal(c.oturum.adimlar[0].durum, 'aktif');
+  assert.equal(c.oturum.adimlar[1].durum, 'bekliyor');
+});
+
+test('Cebimon plan API kamera ve mikrofon kanıtını LLM ile değerlendirip aktif adımı ilerletir', async () => {
+  const { durum, veri: plan } = await api('/cebi/planla', { talimat: 'Kızımın saçını örmeme yardım et' });
+  assert.equal(durum, 200);
+  assert.equal(plan.ortam, 'kişisel bakım');
+  const { durum: evalDurum, veri: sonuc } = await api('/cebi/degerlendir', {
+    gorsel: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/',
+    ses: Buffer.from('sahte ses').toString('base64'), mime: 'audio/webm',
+  });
+  assert.equal(evalDurum, 200);
+  assert.equal(sonuc.duyulan, 'sahte transkript');
+  assert.equal(sonuc.adimTamamlandi, true);
+  assert.equal(sonuc.oturum.adimlar[0].durum, 'tamamlandi');
+  assert.equal(sonuc.oturum.adimlar[1].durum, 'aktif');
+  assert.ok(sonuc.inceleme.gozlem);
+  const { veri: kalici } = await api('/cebi');
+  assert.equal(kalici.oturum.adimlar[0].durum, 'tamamlandi');
+});
+
+test('Cebimon yüksek riskli adımı kullanıcı onayı olmadan ilerletmez', async () => {
+  await api('/cebi/planla', { talimat: 'Arabayı kriko ile kaldırma işim için yardım et' });
+  beyin.cebimon.veri.oturum.risk = 'yuksek';
+  beyin.cebimon.kaydet();
+  const { veri: sonuc } = await api('/cebi/degerlendir', {
+    gorsel: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/',
+    ses: Buffer.from('sahte ses').toString('base64'), mime: 'audio/webm',
+  });
+  assert.equal(sonuc.adimTamamlandi, false);
+  assert.equal(sonuc.onayGerekli, true);
+  assert.equal(sonuc.oturum.adimlar[0].durum, 'onay_bekliyor');
+  const { veri: onay } = await api('/cebi/onay', { onay: true });
+  assert.equal(onay.oturum.adimlar[0].durum, 'tamamlandi');
+  assert.equal(onay.oturum.adimlar[1].durum, 'aktif');
+});
+
+test('Cebimon adım değerlendirmesi kamera ve ses kanıtı olmadan reddedilir', async () => {
+  await api('/cebi/planla', { talimat: 'Bir belgeyi incelememe yardım et' });
+  const { durum, veri } = await api('/cebi/degerlendir', { ses: Buffer.from('ses').toString('base64'), mime: 'audio/webm' });
+  assert.equal(durum, 400);
+  assert.match(veri.hata, /kamera görüntüsü/);
+});
+
 test('görev: talimattan brifing üretilir ve kaydedilir', async () => {
   const { durum, veri: g } = await api('/gorevler', { talimat: "Ahmet'i ara, yarınki toplantıyı 16:00'a ertele" });
   assert.equal(durum, 200);
