@@ -214,7 +214,7 @@ export class SipKoprusu {
 
     try {
       // O_RDWR olarak aç: Writer (Baresip) kapansa da stream asla EOF vermez
-      const outFd = fs.openSync(OUT_FIFO_YOLU, fs.constants.O_RDWR | fs.constants.O_NONBLOCK);
+      const outFd = fs.openSync(OUT_FIFO_YOLU, fs.constants.O_RDWR);
       this.outFifoStream = fs.createReadStream(null, { fd: outFd, highWaterMark: 320 });
       this.outFifoStream.on('data', (chunk) => {
         const rms = hesaplaRMS(chunk);
