@@ -96,10 +96,14 @@ export function hesaplaRMS(pcm) {
   return Math.sqrt(toplam / ornekSayisi);
 }
 
+const FFMPEG_KOMUTU = fs.existsSync('/data/data/com.termux/files/usr/bin/ffmpeg')
+  ? '/data/data/com.termux/files/usr/bin/ffmpeg'
+  : 'ffmpeg';
+
 /** Herhangi bir ses buffer'ini (MP3/WAV) ffmpeg ile 8000Hz 16-bit Mono RAW PCM'e donusturur */
 export function pcmyeDonustur(sesBuffer) {
   return new Promise((coz, reddet) => {
-    const ff = spawn('ffmpeg', [
+    const ff = spawn(FFMPEG_KOMUTU, [
       '-i', 'pipe:0',
       '-f', 's16le',
       '-ar', '8000',
