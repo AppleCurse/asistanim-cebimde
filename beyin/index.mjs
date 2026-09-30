@@ -17,6 +17,7 @@ import { Asistan } from './asistan.mjs';
 import { tarayiciKoprusuKur } from './kopru/tarayici.mjs';
 import { SipKoprusu } from './kopru/sip.mjs';
 import { Telemetri } from '../ortak/telemetri.mjs';
+import { Cebimon } from './cebi.mjs';
 
 const WEB_DIZINI = path.join(path.dirname(fileURLToPath(import.meta.url)), 'web');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
@@ -79,6 +80,7 @@ function agAdresleri() {
 
 export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bedenToken = tokenAl('beden'), log = logOlustur('beyin'), host, port } = {}) {
   const telemetri = new Telemetri();
+  const cebimon = new Cebimon();
   const llm = new LLMIstemci({ ...ayar.beyin.llm, telemetry: telemetri });
   const aramaAyar = ayar.arama?.llm || {};
   const aramaBaseUrl = aramaAyar.baseUrl || (aramaAyar.model ? '' : llm.baseUrl);
@@ -135,6 +137,14 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
     if (M === 'GET' && yol === '/modeller') return { modeller: await llm.modeller(), secili: llm.model };
     if (M === 'GET' && yol === '/maliyet') return telemetri.rapor({ gun: Math.min(365, Math.max(1, Number(url.searchParams.get('gun') || 1))) });
     if (M === 'GET' && yol === '/kara-kutu') return { olaylar: telemetri.oku({ limit: Math.min(2000, Math.max(1, Number(url.searchParams.get('limit') || 200))) }) };
+    if (M === 'GET' && yol === '/cebi') {
+      const bedenDurum = await beden.saglik();
+      const pil = bedenDurum.durum === 'yasiyor' ? await beden.pil().catch(() => null) : null;
+      return cebimon.durum({ pil, beden: bedenDurum, maliyet: telemetri.rapor({ gun: 1 }) });
+    }
+    if (M === 'POST' && yol === '/cebi/oturum') return cebimon.oturumBaslat({ ortam: govde.ortam, amac: govde.amac, risk: govde.risk });
+    if (M === 'POST' && yol === '/cebi/adim') return cebimon.adim(String(govde.metin || ''), govde.durum || 'bekliyor');
+    if (M === 'POST' && yol === '/cebi/bitir') return cebimon.oturumBitir({ basarili: govde.basarili !== false, ozet: String(govde.ozet || '') });
 
     if (M === 'POST' && yol === '/sohbet') {
       if (!govde.metin?.trim() && !govde.resimler?.length) throw Object.assign(new Error('metin gerekli'), { kod: 400 });

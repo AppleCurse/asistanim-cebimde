@@ -40,6 +40,28 @@ function adimNotu(adimlar) {
   $('#sohbet').appendChild(d);
 }
 
+const sinifAdlari = { kivilcim: 'Kıvılcım', nobetci: 'Nöbetçi', sekreter: 'Sekreter', gezgin: 'Gezgin', operator: 'Operatör', usta: 'Usta' };
+const modAdlari = { hazir: 'Hazır', nobette: 'Nöbette', dusunuyor: 'Düşünüyor', konusuyor: 'Konuşuyor', supheli: 'Onay bekliyor', yarali: 'Desteğe ihtiyacı var' };
+async function cebimonYukle() {
+  try {
+    const c = await api('/cebi');
+    $('#cebiAd').textContent = c.ad;
+    $('#cebiSinif').textContent = sinifAdlari[c.sinif] || c.sinif;
+    $('#cebiMod').textContent = modAdlari[c.mod] || c.mod;
+    $('#cebiCihaz').textContent = c.cihaz?.pil != null ? `Pil %${c.cihaz.pil}${c.cihaz.sicaklik ? ` · ${c.cihaz.sicaklik}°C` : ''}` : 'Cihaz hazır';
+    $('#cebiMesaj').textContent = c.oturum ? `${c.oturum.ortam} · ${c.oturum.amac || 'yanında çalışıyor'}` : (c.gunluk?.notlar?.at(-1)?.metin || 'Ben buradayım. Bana ne yapacağını öğret.');
+    $('#cebiYuz').textContent = c.mod === 'yarali' ? '!' : c.mod === 'dusunuyor' ? '…' : '✦';
+  } catch { $('#cebiMesaj').textContent = 'Bağlantı kuruluyor…'; }
+}
+
+document.querySelectorAll('.cebi-aksiyon').forEach((b) => b.addEventListener('click', async () => {
+  const o = await api('/cebi/oturum', { ortam: b.dataset.ortam, amac: b.dataset.amac, risk: b.dataset.ortam === 'is' ? 'orta' : 'dusuk' });
+  await api('/cebi/adim', { metin: 'Kamerayı ve ortamı hazırla', durum: 'aktif' });
+  await cebimonYukle();
+  balon('sistem', `${o.ortam} oturumu başladı. ${o.amac}`);
+  $('#mesaj').focus();
+}));
+
 async function durumYukle() {
   try {
     const d = await api('/durum');
@@ -244,6 +266,7 @@ $('#kur').addEventListener('click', async () => {
 window.addEventListener('appinstalled', () => balon('sistem', 'Uygulama ana ekrana kuruldu ✓'));
 
 durumYukle();
+cebimonYukle();
 gorevleriYukle();
 hafizaYukle();
-setInterval(durumYukle, 60_000);
+setInterval(() => { durumYukle(); cebimonYukle(); }, 60_000);
