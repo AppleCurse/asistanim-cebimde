@@ -86,3 +86,33 @@ test('sesGeldi: halüsinasyon transkripte geçmez, bekliyor durumuna düşer', a
   assert.equal(g2.transkript[0].rol, 'karsi', 'kullanıcının sözü transkripte geçmeli');
   assert.match(g2.transkript[0].metin, /Toplantıyı/);
 });
+
+test('bitir: çağrı hiç başlamasa bile görev kapanır (araniyor\'da takılma kapanışı)', async () => {
+  const bitisler = [];
+  const ozetlemeler = [];
+  const tasiyici = {
+    metin() {}, sesCal: async () => {}, sesDurdur() {}, durum() {},
+    bitti: (_g, ek) => bitisler.push(ek.sebep),
+  };
+  const llm = {
+    sohbet: async () => ({ mesaj: { content: 'x' } }),
+    seslendir: async () => Buffer.alloc(4),
+    yaziyaCevir: async () => '',
+  };
+  const gorevler = {
+    guncelle() {},
+    ozetle: async (g, { sebep }) => { ozetlemeler.push(sebep); return { ...g, durum: 'iptal' }; },
+    aramaSistemMesaji: () => '',
+  };
+  const g = new Gorusme({
+    llm, gorevler, gorev: { id: 't1', transkript: [] },
+    ayar: { kullanici: { ad: 'T' }, arama: {} }, tasiyici, log: sessizLog, mod: 'sunucu-ses',
+  });
+  // baslat ÇALIŞTIRILMADI: aranana hiç ulaşılmadı (meşgul / açmadı → CALL_CLOSED)
+  await g.bitir('karsi-kapatti');
+  assert.deepEqual(bitisler, ['karsi-kapatti'], 'görev kapanışı bir kez yapılmalı');
+  assert.deepEqual(ozetlemeler, ['karsi-kapatti'], 'görev özetlenip kapanmalı');
+  await g.bitir('ikinci');
+  assert.equal(bitisler.length, 1, 'ikinci bitir no-op olmalı');
+  assert.equal(ozetlemeler.length, 1);
+});

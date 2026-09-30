@@ -32,6 +32,9 @@ function asama(m) {
   $('#asama').textContent = m;
 }
 
+// LLM'den gelen özeti innerHTML'e gömerken HTML kaçışı (XSS)
+const kacir = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 function sureGuncelle() {
   const s = Math.floor((Date.now() - baslangic) / 1000);
   $('#sure').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -240,9 +243,9 @@ function gorusmeBitti(sebep, m = {}) {
   if (m.gorev?.sonuc) {
     const s = m.gorev.sonuc;
     $('#ozetKart').style.display = '';
-    $('#ozet').innerHTML = `<p>${s.basarili ? '✅ Başarılı' : '❌ Başarısız'} — ${s.ozet || ''}</p>
-      ${s.kararlar?.length ? '<p><b>Kararlar:</b></p><ul>' + s.kararlar.map((k) => `<li>${k}</li>`).join('') + '</ul>' : ''}
-      ${s.takip?.length ? '<p><b>Takip:</b></p><ul>' + s.takip.map((k) => `<li>${k}</li>`).join('') + '</ul>' : ''}`;
+    $('#ozet').innerHTML = `<p>${s.basarili ? '✅ Başarılı' : '❌ Başarısız'} — ${kacir(s.ozet || '')}</p>
+      ${s.kararlar?.length ? '<p><b>Kararlar:</b></p><ul>' + s.kararlar.map((k) => `<li>${kacir(k)}</li>`).join('') + '</ul>' : ''}
+      ${s.takip?.length ? '<p><b>Takip:</b></p><ul>' + s.takip.map((k) => `<li>${kacir(k)}</li>`).join('') + '</ul>' : ''}`;
   }
   if (ws && ws.readyState === 1) ws.close();
 }

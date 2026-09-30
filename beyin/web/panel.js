@@ -4,6 +4,9 @@ const $ = (s) => document.querySelector(s);
 // LLM/kullanıcı metnini innerHTML'e gömerken HTML kaçışı (XSS sertleştirmesi)
 const kacir = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// /bak ile çekilen son görsel: bir sonraki sohbet mesajına eklenir ("bu ne?" diye sorabilmek için)
+let bekleyenGorsel = null;
+
 async function api(yol, govde) {
   const y = await fetch('/api' + yol, {
     method: govde ? 'POST' : 'GET',
@@ -96,7 +99,8 @@ $('#sohbetForm').addEventListener('submit', async (e) => {
   $('#gonder').disabled = true;
   const bekle = balon('sistem', 'düşünüyor…');
   try {
-    const y = await api('/sohbet', { oturum: 'panel', metin });
+    const y = await api('/sohbet', { oturum: 'panel', metin, resimler: bekleyenGorsel ? [bekleyenGorsel] : [] });
+    bekleyenGorsel = null;
     bekle.remove();
     adimNotu(y.adimlar);
     balon('asistan', y.metin || '(boş yanıt)');
@@ -115,7 +119,8 @@ $('#bak').addEventListener('click', async () => {
   try {
     const f = await api('/bak', { kamera: 0 });
     bekle.remove();
-    balon('asistan', 'Şu an gördüğüm:', `data:${f.mime};base64,${f.base64}`);
+    bekleyenGorsel = `data:${f.mime};base64,${f.base64}`;
+    balon('asistan', 'Şu an gördüğüm: (bir sonraki mesajın bu görselle birlikte yorumlanır)', bekleyenGorsel);
   } catch (h) {
     bekle.textContent = 'Hata: ' + h.message;
   }

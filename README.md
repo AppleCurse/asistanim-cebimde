@@ -563,7 +563,7 @@ asistanim-cebimde/
 │   ├── proot/ubuntu-kur.sh   Ubuntu + Node 22 + 9remote  (icerde-kur.sh Ubuntu içinde çalışır)
 │   ├── proot/9remote.sh      Ubuntu içinde 9remote (depo ve ~/.asistan bağlı)
 │   └── dev/sahte-ortam.mjs   telefon olmadan tam ortam; dev/paketle.sh sürüm paketi
-├── test/                     node:test — sahte 9router + sahte cihaz ile uçtan uca (36 test)
+├── test/                     node:test — sahte 9router + sahte cihaz ile uçtan uca (40 test)
 ├── docs/                     mimari, kurulum, telefon görüşmesi, yol haritası, donanım notları
 ├── .github/workflows/        surum.yml: release yayınlanınca test + paket + dosya yükleme
 ├── AGENTS.md                 bu depoda çalışan yapay zekâ ajanları için kurallar
@@ -612,7 +612,7 @@ Yanıt biçimi: `{ "tamam": true, "sonuc": … }` ya da `{ "tamam": false, "hata
 ```bash
 git clone https://github.com/AppleCurse/asistanim-cebimde && cd asistanim-cebimde
 npm install
-npm test                           # 36 test: beden API + izinler, ajan döngüsü, görüntü aktarımı,
+npm test                           # 40 test: beden API + izinler, ajan döngüsü, görüntü aktarımı,
                                    # brifing, hücresel arama, WebSocket görüşme + özet, yetki
 node scripts/dev/sahte-ortam.mjs   # sahte 9router + sahte cihaz + gerçek beyin
                                    # → http://localhost:20131/?token=dev

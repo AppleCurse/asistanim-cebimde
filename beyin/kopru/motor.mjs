@@ -51,6 +51,7 @@ export class Gorusme {
     this.mesajlar = [];
     this.transkript = [];
     this.aktif = false;
+    this.kapandi = false; // bitir() bir kez kapanışı yapsın; hiç başlamayan çağrı da görevi kapatmalı
     this.nesil = 0;
     this.durum = null; // dusunuyor | dinliyor | konusuyor | bekliyor | kapaniyor | hata
     this.kuyruk = Promise.resolve();
@@ -86,7 +87,7 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
   }
 
   async baslat() {
-    if (this.aktif) return;
+    if (this.aktif || this.kapandi) return;
     this.aktif = true;
     this.baslangic = Date.now();
     if (this.gorev) this.gorevler.guncelle(this.gorev.id, { durum: 'araniyor', mod: this.mod });
@@ -182,7 +183,10 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
   }
 
   async bitir(sebep = 'kullanici-kapatti') {
-    if (!this.aktif) return this.gorev;
+    // DİKKAT: `aktif` kontrolü burada YOK — çağrı hiç başlamadıysa da (aranan açmadı,
+    // meşgul, hat düşmedi) kapanış yapılmalı; yoksa görev 'araniyor'da sonsuza kadar takılır.
+    if (this.kapandi) return this.gorev;
+    this.kapandi = true;
     this.aktif = false;
     clearTimeout(this.zamanlayici);
     this._durumVer('kapaniyor', { sebep });
