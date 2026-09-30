@@ -15,7 +15,7 @@ import { Cebimon } from './cebi.mjs';
 
 const ayar = ayarYukle();
 const log = logOlustur('cli');
-const llm = new LLMIstemci({ ...ayar.beyin.llm });
+const llm = new LLMIstemci({ ...ayar.beyin.llm, ttsSaglayici: ayar.beyin.tts });
 
 if (process.argv.includes('--modeller')) {
   try {

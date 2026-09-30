@@ -22,6 +22,10 @@ export class LLMIstemci {
     sttModel = 'whisper-large-v3-turbo',
     ttsModel = 'tts-1',
     ttsVoice = 'tr-TR-AhmetNeural',
+    ttsSaglayici,
+    elevenlabsApiKey,
+    elevenlabsVoiceId,
+    elevenlabsModel,
     zamanAsimi = 120_000,
     openrouterApiKey,
     groqApiKey,
@@ -33,6 +37,10 @@ export class LLMIstemci {
     this.groqApiKey = groqApiKey || process.env.GROQ_API_KEY || '';
     this.cerebrasApiKey = cerebrasApiKey || process.env.CEREBRAS_API_KEY || '';
     this.tavilyApiKey = tavilyApiKey || process.env.TAVILY_API_KEY || '';
+    this.elevenlabsApiKey = elevenlabsApiKey || process.env.ELEVENLABS_API_KEY || '';
+    this.elevenlabsVoiceId = elevenlabsVoiceId || process.env.ELEVENLABS_VOICE_ID || 'cgSgspJ2msm6clMCkdW9';
+    this.elevenlabsModel = elevenlabsModel || process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
+    this.ttsSaglayici = ttsSaglayici || process.env.TTS_SAGLAYICI || '';
 
     this.apiKey = apiKey || process.env.LLM_API_KEY || this.openrouterApiKey || '';
     this.baseUrl = (baseUrl || process.env.LLM_BASE_URL || (this.apiKey.startsWith('sk-or-') ? 'https://openrouter.ai/api/v1' : 'http://127.0.0.1:20128/v1')).replace(/\/+$/, '');
@@ -226,7 +234,42 @@ export class LLMIstemci {
     if (!metin || !metin.trim()) return Buffer.alloc(0);
     const sesSecimi = ses || this.ttsVoice || 'tr-TR-EmelNeural';
 
-    // 1. Piper: tamamen cihaz içinde, ağsız ve düşük gecikmeli Türkçe TTS.
+    // 1. ElevenLabs: yüksek kaliteli doğal ses (öncelikli TTS veya anahtar tanımlıysa)
+    const elevenlabsSecili = this.ttsSaglayici === 'elevenlabs' || (this.elevenlabsApiKey && !this.piperModel && this.ttsSaglayici !== 'edge-tts' && this.ttsSaglayici !== '9router');
+    if (this.elevenlabsApiKey && elevenlabsSecili) {
+      const sesId = ses || this.elevenlabsVoiceId || 'cgSgspJ2msm6clMCkdW9';
+      try {
+        const y = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${sesId}`, {
+          method: 'POST',
+          headers: {
+            'xi-api-key': this.elevenlabsApiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: metin,
+            model_id: model || this.elevenlabsModel || 'eleven_multilingual_v2',
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75,
+            },
+          }),
+          signal: AbortSignal.timeout(Math.min(this.zamanAsimi, 30_000)),
+        });
+        if (!y.ok) {
+          const hataGovde = await y.text().catch(() => '');
+          throw new Error(`ElevenLabs HTTP ${y.status}: ${hataGovde.slice(0, 200)}`);
+        }
+        const sesBuffer = Buffer.from(await y.arrayBuffer());
+        if (sesBuffer && sesBuffer.length > 0) {
+          this.telemetri?.yaz('tts', { motor: 'elevenlabs', karakter: metin.length });
+          return sesBuffer;
+        }
+      } catch (hata) {
+        console.log(`[TTS] ElevenLabs başarısız (${hata.message}) — yedek motora geçiliyor`);
+      }
+    }
+
+    // 2. Piper: tamamen cihaz içinde, ağsız ve düşük gecikmeli Türkçe TTS.
     // PIPER_MODEL bir .onnx dosyasını göstermelidir; model depoya gömülmez.
     if (this.piperModel) {
       const cikti = path.join(os.tmpdir(), `asistan-piper-${process.pid}-${Date.now()}.wav`);
@@ -245,7 +288,7 @@ export class LLMIstemci {
       } catch { fs.rmSync(cikti, { force: true }); }
     }
 
-    // 2. Termux / sistemde edge-tts varsa doğrudan kullan (ücretsiz, doğal Türkçe, ultra hızlı)
+    // 3. Termux / sistemde edge-tts varsa doğrudan kullan (ücretsiz, doğal Türkçe, ultra hızlı)
     try {
       const sesBuffer = await new Promise((resolve, reject) => {
         const p = spawn('edge-tts', ['--voice', sesSecimi, '--text', metin, '--write-media', '-'], {
@@ -259,17 +302,21 @@ export class LLMIstemci {
         });
         p.on('error', reject);
       });
-      if (sesBuffer && sesBuffer.length > 0) return sesBuffer;
+      if (sesBuffer && sesBuffer.length > 0) {
+        this.telemetri?.yaz('tts', { motor: 'edge-tts', karakter: metin.length });
+        return sesBuffer;
+      }
     } catch {
       // edge-tts kurulu değilse veya hata verirse fallback
     }
 
-    // 2. 9router / OpenAI seslendirme ucu
+    // 4. 9router / OpenAI seslendirme ucu
     const y = await this._istek('/audio/speech', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: model || this.ttsModel, input: metin, voice: sesSecimi, response_format: format }),
     });
+    this.telemetri?.yaz('tts', { motor: '9router', karakter: metin.length });
     return Buffer.from(await y.arrayBuffer());
   }
 }

@@ -81,7 +81,7 @@ function agAdresleri() {
 export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bedenToken = tokenAl('beden'), log = logOlustur('beyin'), host, port } = {}) {
   const telemetri = new Telemetri();
   const cebimon = new Cebimon({ ad: ayar.kullanici.asistanAdi });
-  const llm = new LLMIstemci({ ...ayar.beyin.llm, telemetry: telemetri });
+  const llm = new LLMIstemci({ ...ayar.beyin.llm, ttsSaglayici: ayar.beyin.tts, telemetry: telemetri });
   const aramaAyar = ayar.arama?.llm || {};
   const aramaBaseUrl = aramaAyar.baseUrl || (aramaAyar.model ? '' : llm.baseUrl);
   const aramaApiKey = aramaAyar.apiKey || (
@@ -99,8 +99,15 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
         sttModel: ayar.beyin.llm.sttModel,
         ttsModel: ayar.beyin.llm.ttsModel,
         ttsVoice: ayar.beyin.llm.ttsVoice,
+        ttsSaglayici: ayar.beyin.tts,
         groqApiKey: ayar.beyin.llm.groqApiKey,
         openrouterApiKey: ayar.beyin.llm.openrouterApiKey,
+        cerebrasApiKey: ayar.beyin.llm.cerebrasApiKey,
+        tavilyApiKey: ayar.beyin.llm.tavilyApiKey,
+        elevenlabsApiKey: ayar.beyin.llm.elevenlabsApiKey,
+        elevenlabsVoiceId: ayar.beyin.llm.elevenlabsVoiceId,
+        elevenlabsModel: ayar.beyin.llm.elevenlabsModel,
+        telemetry: telemetri,
       })
     : llm;
   const beden = new BedenIstemci({ url: ayar.beyin.bedenUrl, token: bedenToken });

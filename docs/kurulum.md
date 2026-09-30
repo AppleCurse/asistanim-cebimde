@@ -47,7 +47,12 @@ termux-speech-to-text          # bir şey söyle → yazıya çevirmeli (Google 
 
 Telefonun tarayıcısında `http://localhost:20128` → **Providers** → ücretsiz bir sağlayıcı bağla (OpenCode Free kayıtsız çalışır; Kiro, Vertex kredisi vb.) ya da kendi OpenAI/Anthropic/Gemini anahtarını gir. **Dashboard → API key**'i kopyala.
 
-Görüşme motoru için ses sağlayıcıları (isteğe bağlı): 9router'da STT (Whisper/Gemini/Groq…) ve TTS sağlayıcısı bağlarsan `STT_SAGLAYICI=9router`, `TTS_SAGLAYICI=9router` yapabilirsin. Bağlamazsan yazılım telefonu cebindeki telefonun kendi tanıma/okuma motorunu kullanır (ücretsiz).
+Görüşme motoru ve asistan ses çıkışı için sağlayıcılar (isteğe bağlı):
+- **ElevenLabs (Ultra kaliteli doğal ses):** `TTS_SAGLAYICI=elevenlabs`, `ELEVENLABS_API_KEY=sk_...` ve `ELEVENLABS_VOICE_ID=cgSgspJ2msm6clMCkdW9` (Jessica).
+- **Piper (Yerel & çevrimdışı):** `TTS_SAGLAYICI=piper`, `PIPER_MODEL=.../model.onnx` (ağsız ve düşük gecikmeli).
+- **Edge-TTS (Ücretsiz & doğal):** `TTS_SAGLAYICI=edge-tts`, `TTS_VOICE=tr-TR-EmelNeural` (Termux'ta `edge-tts` paketiyle).
+- **9router / Android:** `TTS_SAGLAYICI=9router` veya `TTS_SAGLAYICI=android` (Termux API TTS).
+- STT (Kulak) için `STT_SAGLAYICI=groq` (Whisper Large v3 Turbo) önerilir.
 
 `~/asistanim-cebimde/.env`:
 

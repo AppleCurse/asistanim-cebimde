@@ -52,13 +52,16 @@ export const VARSAYILAN_AYAR = {
       groqApiKey: '',
       cerebrasApiKey: '',
       tavilyApiKey: '',
+      elevenlabsApiKey: '',
+      elevenlabsVoiceId: 'cgSgspJ2msm6clMCkdW9',
+      elevenlabsModel: 'eleven_multilingual_v2',
       sicaklik: 0.4,
       sttModel: 'whisper-large-v3-turbo',
       ttsModel: 'tts-1',
       ttsVoice: 'tr-TR-EmelNeural',
     },
     stt: 'android',    // android | 9router | groq
-    tts: 'piper',     // piper | android | 9router | edge-tts
+    tts: 'piper',     // piper | elevenlabs | edge-tts | android | 9router
     maksArac: 8,       // bir yanıt için en fazla araç turu
     hafizaLimiti: 6000 // sistem mesajına eklenen hafıza karakter sınırı
   },
@@ -118,6 +121,9 @@ function ortamUygula(ayar) {
   if (e.GROQ_API_KEY) a.beyin.llm.groqApiKey = e.GROQ_API_KEY;
   if (e.CEREBRAS_API_KEY) a.beyin.llm.cerebrasApiKey = e.CEREBRAS_API_KEY;
   if (e.TAVILY_API_KEY) a.beyin.llm.tavilyApiKey = e.TAVILY_API_KEY;
+  if (e.ELEVENLABS_API_KEY) a.beyin.llm.elevenlabsApiKey = e.ELEVENLABS_API_KEY;
+  if (e.ELEVENLABS_VOICE_ID) a.beyin.llm.elevenlabsVoiceId = e.ELEVENLABS_VOICE_ID;
+  if (e.ELEVENLABS_MODEL) a.beyin.llm.elevenlabsModel = e.ELEVENLABS_MODEL;
   if (!a.arama.llm) a.arama.llm = {};
   if (e.ARAMA_LLM_BASE_URL) a.arama.llm.baseUrl = e.ARAMA_LLM_BASE_URL;
   if (e.ARAMA_LLM_API_KEY) a.arama.llm.apiKey = e.ARAMA_LLM_API_KEY;
