@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ASISTAN_HOME } from '../ortak/ayar.mjs';
 
-const GOREV_DIZINI = path.join(ASISTAN_HOME, 'gorevler');
+const homeDizini = process.env.ASISTAN_HOME || (fs.existsSync('/data/data/com.termux/files/home/.asistan') ? '/data/data/com.termux/files/home/.asistan' : ASISTAN_HOME);
+const GOREV_DIZINI = path.join(homeDizini, 'gorevler');
 const id = 'omer-brifing-' + Date.now().toString(36);
 
 const gorev = {
