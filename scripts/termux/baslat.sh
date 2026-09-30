@@ -10,15 +10,15 @@ export PATH="/data/data/com.termux/files/usr/bin:$PREFIX/bin:$PATH"
 unset LD_PRELOAD
 
 REPO_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/../.." && pwd)"
-export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
-RUN="$ASISTAN_HOME/run"; mkdir -p "$RUN" "$ASISTAN_HOME/log"
-SERVIS="$REPO_DIR/scripts/termux/servis.sh"
-
-# .env yükle (LLM_API_KEY, LLM_MODEL, ... )
+# .env yükle (ASISTAN_HOME ve sağlayıcı sırları dahil); sonra servis yollarını sabitle.
 if [[ -f "$REPO_DIR/.env" ]]; then
+  chmod 600 "$REPO_DIR/.env" 2>/dev/null || true
   set -a; # shellcheck disable=SC1091
   source "$REPO_DIR/.env"; set +a
 fi
+export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
+RUN="$ASISTAN_HOME/run"; mkdir -p "$RUN" "$ASISTAN_HOME/log"; chmod 700 "$ASISTAN_HOME" 2>/dev/null || true
+SERVIS="$REPO_DIR/scripts/termux/servis.sh"
 
 yasiyor() { [[ -f "$RUN/$1.pid" ]] && kill -0 "$(cat "$RUN/$1.pid")" 2>/dev/null; }
 baslat() {
@@ -45,7 +45,12 @@ if command -v proot-distro >/dev/null; then
   baslat baresip proot-distro login --bind /dev/zero:/dev/full ubuntu -- baresip
 fi
 if [[ -f "$REPO_DIR/scripts/termux/tunel.sh" ]]; then
-  baslat tunel bash "$REPO_DIR/scripts/termux/tunel.sh"
+  ROOTFS="$PREFIX/var/lib/proot-distro/containers/ubuntu/rootfs"
+  if command -v proot-distro >/dev/null && { [[ -x "$HOME/cloudflared" ]] || [[ -x "$ROOTFS/usr/local/bin/cloudflared" ]]; }; then
+    baslat tunel bash "$REPO_DIR/scripts/termux/tunel.sh"
+  else
+    echo "  tünel atlandı (proot Ubuntu ve Linux cloudflared binary'si gerekli)"
+  fi
 fi
 if [[ "${ENABLE_9REMOTE:-0}" == "1" ]]; then
   baslat 9remote bash "$REPO_DIR/scripts/proot/9remote.sh"

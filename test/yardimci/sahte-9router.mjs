@@ -6,6 +6,7 @@ import http from 'node:http';
 
 export function sahte9RouterBaslat() {
   const istekler = [];
+  const ayarlar = {};
   const sunucu = http.createServer(async (req, res) => {
     const parcalar = [];
     for await (const p of req) parcalar.push(p);
@@ -45,6 +46,21 @@ export function sahte9RouterBaslat() {
           }),
         });
       }
+      // Cebimon iş planı üretimi
+      if (sistem.includes('güvenlik odaklı Türkçe bir iş planlayıcısısın')) {
+        return yanit({ role: 'assistant', content: JSON.stringify({
+          baslik: 'Saç örme', ortam: 'kişisel bakım', risk: 'dusuk', adimlar: [
+            { metin: 'Kamerayı saç hizasına al', aciklama: 'Saçı iyi ışıkta kadraja al.', guvenlik: 'Kamerayı sabitle.' },
+            { metin: 'Bölümleri ayır', aciklama: 'Saçı nazikçe bölümlere ayır.', guvenlik: 'Çekiştirme.' },
+            { metin: 'Örgüyü başlat', aciklama: 'Bölümleri sırayla geçir.', guvenlik: 'Saçı fazla sıkma.' },
+          ],
+        }) });
+      }
+      // Cebimon'un görsel/ses adım doğrulaması
+      if (sistem.includes('kanıta dayalı ve güvenlik odaklı bir görev adımı doğrulayıcısısın')) {
+        const sonuc = ayarlar.cebiDegerlendirme || { tamamlandi: true, guvenli: true, guven: 0.94, gozlem: 'Adımın sonucu görüntüde doğrulanıyor.', geri_bildirim: 'Adım tamamlandı.', sonraki_adim: 'Sıradaki adıma geç.' };
+        return yanit({ role: 'assistant', content: JSON.stringify(sonuc) });
+      }
       // Görüşme özeti
       if (sistem.includes('transkriptini değerlendir')) {
         return yanit({ role: 'assistant', content: '```json\n{"basarili": true, "ozet": "Toplantı 16:00’a alındı.", "kararlar": ["Yarın 16:00"], "takip": ["Takvimi güncelle"], "not": null}\n```' });
@@ -56,6 +72,9 @@ export function sahte9RouterBaslat() {
       }
       // Araç döngüsü
       if (son.role === 'tool') return yanit({ role: 'assistant', content: `Araç sonucu: ${son.content}` });
+      if (/saçını ör|tamir edeceğim|arabaya bak|yağını değiştireceğim/i.test(kullaniciMetni) && govde.tools?.some((t) => t.function.name === 'cebi_planla')) {
+        return yanit({ role: 'assistant', content: null, tool_calls: [{ id: 'cp1', type: 'function', function: { name: 'cebi_planla', arguments: JSON.stringify({ talimat: kullaniciMetni }) } }] }, 'tool_calls');
+      }
       if (/pil/i.test(kullaniciMetni) && govde.tools?.some((t) => t.function.name === 'pil_durumu')) {
         return yanit({ role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'pil_durumu', arguments: '{}' } }] }, 'tool_calls');
       }
@@ -74,6 +93,6 @@ export function sahte9RouterBaslat() {
   });
 
   return new Promise((coz) => {
-    sunucu.listen(0, '127.0.0.1', () => coz({ sunucu, url: `http://127.0.0.1:${sunucu.address().port}/v1`, istekler }));
+    sunucu.listen(0, '127.0.0.1', () => coz({ sunucu, url: `http://127.0.0.1:${sunucu.address().port}/v1`, istekler, ayarlar }));
   });
 }

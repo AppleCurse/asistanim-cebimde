@@ -23,11 +23,22 @@
     </nav>
   </header>
 
+  <div id="bildirim" class="toast" role="status" aria-live="polite" hidden></div>
+
   <main>
     <section class="cebi-hero" id="cebiHero">
-      <div class="cebi-ust"><div><span class="cebi-kucuk">DİJİTAL VARLIĞIN</span><h2><span id="cebiAd">Cebimon</span> <span class="sinif" id="cebiSinif">Kıvılcım</span></h2><p id="cebiMesaj">Henüz yeniyim. Bana ne yapacağını öğret.</p></div><div class="cebi-yuz" id="cebiYuz">✦</div></div>
+      <div class="cebi-ust"><div><span class="cebi-kucuk">DİJİTAL ASİSTANIN</span><h2><span id="cebiAd">Aspasia</span> <span class="sinif" id="cebiSinif">Kıvılcım</span></h2><p id="cebiMesaj">Henüz yeniyim. Bana ne yapacağını öğret.</p></div><div class="cebi-yuz" id="cebiYuz">✦</div></div>
       <div class="cebi-durum"><span id="cebiMod">Hazır</span><span id="cebiCihaz">Cihaz kontrol ediliyor…</span></div>
       <div class="cebi-eylemler"><button class="cebi-aksiyon" data-ortam="genel" data-amac="Kullanıcıya bulunduğu ortamda yardımcı ol">✦ Yanımda ol</button><button class="cebi-aksiyon" data-ortam="is" data-amac="İşimi adım adım takip et">💼 İş modu</button><button class="cebi-aksiyon" data-ortam="gezi" data-amac="Bulunduğum yeri ve gördüklerimi anlamama yardım et">🧭 Gezgin modu</button></div>
+    </section>
+
+    <section class="kart">
+      <div class="baslik-satiri"><div><h2>Görev tahtası</h2><p class="soluk alt-baslik" id="cebiBaslikAciklama">Bir cümleyle işi anlat; Aspasia adımları hazırlasın.</p></div><button class="buton tehlike" id="cebiTemizle" type="button">Geçmişi temizle</button></div>
+      <form id="cebiPlanForm">
+        <textarea id="cebiTalimat" placeholder="Örn: Arabanın yağını değiştireceğim, yardım et; kızımın saçını örmeme yardım et; şunu tamir edeceğim"></textarea>
+        <div class="satir"><button class="buton birincil" type="submit">Planı oluştur</button></div>
+      </form>
+      <div id="cebiTahta" style="margin-top:12px"></div>
     </section>
 
     <section class="kart">
@@ -78,6 +89,15 @@
     </section>
   </main>
 
+  <dialog id="cebiAdimDialog" class="adim-dialog">
+    <div class="kart">
+      <h2>Adımı kamera ve sesle doğrula</h2>
+      <p id="cebiAdimMetni"></p>
+      <video id="cebiVideo" autoplay playsinline muted></video>
+      <p id="cebiKayitDurumu" class="soluk">Adımı uygula, ardından kaydı başlat.</p>
+      <div class="eylemler"><button id="cebiKaydet" class="buton birincil" type="button">🎙 5 sn kaydet ve değerlendir</button><button id="cebiKapat" class="buton" type="button">Kapat</button></div>
+    </div>
+  </dialog>
   <script src="/statik/panel.js"></script>
 </body>
 </html>

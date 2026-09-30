@@ -31,6 +31,7 @@ Tüm çalışma verisi `~/.asistan/` altında (`ASISTAN_HOME` ile değiştirileb
 ├── beyin.token      panel→beyin anahtarı        (0600)
 ├── hafiza.md        kalıcı hafıza (insan tarafından da düzenlenebilir)
 ├── gorevler/*.json  görüşme görevleri: brifing + transkript + sonuç
+├── cebimon.json    kalıcı Cebimon oturumu + görev adımı değerlendirmeleri
 ├── sohbet/*.jsonl   sohbet günlükleri (oturum başına)
 ├── veri/            fotoğraflar, ses kayıtları
 ├── log/             beden.log beyin.log 9router.log ...
@@ -62,6 +63,17 @@ panel "Görüşmeyi başlat" ─► taşıyıcı seçimi
 Gorusme motoru: açılış cümlesi → [ses→STT] → LLM(brifing kişiliği) → [TTS→ses] … → [GORUSME_BITTI]
    └─ GorevYoneticisi.ozetle(): {basarili, ozet, kararlar, takip} → görev kapanır → hafiza.md'ye not
 ```
+
+### Cebimon uygulamalı görev akışı
+```
+Doğal sohbet cümlesi ─► cebi_planla aracı ─► Cebimon.planla() ─► ~/.asistan/cebimon.json
+Panel görev tahtası ─► kamera görüntüsü + 5 sn ses kaydı
+   └─ STT metni + aktif adım + görüntü ─► multimodal LLM kanıt değerlendirmesi
+      ├─ kanıt zayıf/tehlike → adım açık kalır ve geri bildirim görünür
+      ├─ güvenli ve yeterli kanıt → adım otomatik tamamlanır, sıradaki etkinleşir
+      └─ yüksek risk → onay_bekliyor; kullanıcı onayı olmadan ilerlemez
+```
+Görüntü ve ses istek sırasında işlenir; medya dosyası olarak kalıcılaştırılmaz. STT metni ve LLM değerlendirme özeti Cebimon oturumunda tutulur. Tarayıcı kamera/mikrofon erişimi HTTPS veya localhost güvenli bağlamı gerektirir.
 
 ### Ses yolları
 | Mod | Kulak (STT) | Ağız (TTS) | Maliyet | Nerede kullanılır |

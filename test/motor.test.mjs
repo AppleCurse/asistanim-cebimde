@@ -34,6 +34,8 @@ test('halusinasyonMu: STT uydurma kalıplarını yakalar', () => {
   assert.ok(halusinasyonMu('altyazılar hazırlanmıştır'));
   assert.ok(halusinasyonMu('Subtitles by Amara.org'));
   assert.ok(halusinasyonMu('Videoyu izlediğiniz için teşekkürler'));
+  assert.ok(halusinasyonMu('İzlediğiniz için teşekkür ederim.'), 'Türkçe büyük İ locale ile normalize edilmeli');
+  assert.ok(halusinasyonMu('VİDEOYU İZLEDİĞİNİZ İÇİN TEŞEKKÜRLER'));
   assert.ok(halusinasyonMu('Beğenmeyi ve abone olmayı unutmayın'));
   assert.ok(halusinasyonMu('Thanks for watching!'));
   assert.ok(halusinasyonMu('[Müzik]'));

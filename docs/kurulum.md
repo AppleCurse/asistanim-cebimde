@@ -55,7 +55,7 @@ Görüşme motoru için ses sağlayıcıları (isteğe bağlı): 9router'da STT 
 LLM_API_KEY=9r-...............
 LLM_MODEL=kr/claude-sonnet-4.5     # 9router panelindeki model adı; boş bırakırsan ilk uygun model seçilir
 KULLANICI_ADI="Adın Soyadın"        # tırnaklı; asistan aramalarda "X'in dijital asistanı" der
-ASISTAN_ADI=Cebi
+ASISTAN_ADI=Aspasia
 ```
 
 Model listesi: `npm run modeller`
@@ -92,6 +92,8 @@ En temiz yol **Tailscale**: eski telefona ve cebindekine Tailscale uygulamasın�
 
 Alternatif: 9remote'un "Zero-Config Localhost Preview" özelliği (HTTP sayfaları çalışır; WebSocket'li yazılım telefonu için Tailscale önerilir).
 
+**Sabit alan adıyla Cloudflare Tunnel (isteğe bağlı):** Cloudflare Zero Trust'ta named tunnel ve public hostname oluştur; hostname'i panelin yerel origin'ine (`https://localhost:20131` veya TLS yoksa `http://localhost:20131`) yönlendir. Self-signed TLS kullanıyorsan origin TLS doğrulamasını Cloudflare tunnel yapılandırmasında kapat. `.env` içine `CLOUDFLARED_TUNNEL_TOKEN` ve `CLOUDFLARED_PUBLIC_URL` yaz; Proot Ubuntu içinde Linux ARM64 `cloudflared` binary'si bulunmalı (`$HOME/cloudflared` konumundan kopyalanır). Termux `baslat.sh` named tunnel'ı token-file ile başlatır. Gizli `.env` dosyası kurulumda `0600` izin alır. Named tunnel yapılandırılmadıysa mevcut quick tunnel geçici URL verir; yeniden başladığında değişmesi beklenir.
+
 ## 6. Mikrofon ve HTTPS
 
 Tarayıcılar mikrofonu ve konuşma tanımayı yalnızca **güvenli bağlamda** (HTTPS veya localhost) açar. Seçenekler:
@@ -100,7 +102,9 @@ Tarayıcılar mikrofonu ve konuşma tanımayı yalnızca **güvenli bağlamda** 
 - Chrome'da `chrome://flags/#unsafely-treat-insecure-origin-as-secure` → `http://192.168.x.y:20131` ekle → HTTP ile de mikrofon açılır.
 - Tailscale + HTTPS sertifikası (yukarıdaki gibi).
 
-Yazılım telefonunda **"Tarayıcı sesi"** modu Android Chrome'da en iyi çalışır (Türkçe tanıma + Google TTS sesleri). iOS Safari'de tanıma yoktur; yazarak konuşabilirsin, yanıtlar yine seslendirilir.
+**Görev tahtası** adımlarını kamera/mikrofonla doğrulamak için de tarayıcı izinleri gerekir. Kullanıcıdan her kayıt öncesi tarayıcı izin ister; 5 saniyelik kayıt ve bir kare, STT/LLM incelemesi için yapılandırılmış sağlayıcıya gönderilir. Hassas belgeleri kadraja almadan önce kontrol et. Medya dosyaları kaydedilmez; konuşma transkripti ve değerlendirme notu kalıcı görev oturumunda tutulur. Yüksek riskli adım panelde ayrıca kullanıcı onayı olmadan ilerlemez.
+
+Yazılım telefonunda **"Tarayıcı sesi"** modu Android Chrome'da en iyi çalışır. Yerleşik konuşma tanıması bulunmayan iOS/Brave tarayıcılarında HTTPS ve mikrofon izni varsa kayıt düğmesi MediaRecorder ile kısa ses alıp yapılandırılmış STT sağlayıcısına gönderir; bu da kullanılamazsa yazıyla devam edebilirsin.
 
 ## 7. proot Ubuntu + 9remote (isteğe bağlı, "sinir sistemi")
 

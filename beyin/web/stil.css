@@ -105,3 +105,19 @@ textarea { min-height: 70px; resize: vertical; }
 .durum-cubugu { display: flex; justify-content: space-between; align-items: center; color: var(--soluk); font-size: 13px; }
 .giris { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
 .giris .kart { width: 100%; max-width: 380px; }
+.plan-adimlar { list-style:none; padding:0; display:grid; gap:8px; }
+.plan-adim { padding:9px 10px; border:1px solid var(--kenar); border-radius:9px; color:var(--metin); }
+.plan-adim.aktif { border-color:var(--vurgu2); }
+.plan-adim.tamamlandi { opacity:.72; }
+.plan-adim.onay_bekliyor { border-color:var(--uyari); }
+.cebi-plan-kart { background:var(--panel2); border:1px solid var(--kenar); border-radius:12px; padding:12px; }
+.adim-dialog { width:min(92vw,540px); max-height:90vh; border:1px solid var(--kenar); border-radius:var(--radius); background:var(--panel); color:var(--metin); padding:12px; }
+.adim-dialog::backdrop { background:#000b; }
+.adim-dialog .kart { border:0; padding:6px; }
+.adim-dialog video { width:100%; max-height:48vh; object-fit:cover; border-radius:10px; background:#000; }
+
+.toast { position:fixed; z-index:1000; top:calc(12px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); width:min(92vw,560px); padding:12px 16px; border:1px solid var(--vurgu2); border-radius:12px; background:var(--panel); color:var(--metin); box-shadow:0 8px 30px #0005; }
+.toast.toast-hata { border-color:var(--hata); }
+.toast[hidden] { display:none; }
+.baslik-satiri { gap:10px; }
+@media (max-width:480px) { .baslik-satiri { align-items:flex-start; } .baslik-satiri .buton { white-space:nowrap; font-size:12px; padding:8px; } }

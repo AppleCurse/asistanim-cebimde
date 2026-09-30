@@ -57,6 +57,11 @@ test('token olmadan diğer uçlar 401', async () => {
   assert.equal(y.status, 401);
 });
 
+test('yanlış uzunlukta token da sabit uzunluklu hash karşılaştırmasıyla reddedilir', async () => {
+  const y = await fetch(url + '/pil', { headers: { Authorization: `Bearer ${'yanlis-token-'.repeat(100)}` } });
+  assert.equal(y.status, 401);
+});
+
 test('pil durumu döner', async () => {
   const y = await istek('/pil');
   const v = await y.json();

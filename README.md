@@ -95,7 +95,7 @@ Bunlara ek olarak:
 ## 3. Neler yapamaz? (dürüst sınırlar)
 
 - **Eski telefonun SIM'iyle "konuşamaz".** Root'suz Android, uygulamalara çağrı sesini vermez: asistan numarayı çevirebilir ama hatta kendi sesini basamaz, karşı tarafı duyamaz. Bu Android'in kısıtı, kodun değil. Asistanın **gerçekten arayıp konuşması** için ses internet hattından (VoIP/SIP) geçer — **baresip/SIP köprüsü entegre** (Zadarma; ses kanalı gözcüsü + arama kapısı + `ses-testi.sh` teşhisi). Ayrıntı, maliyet ve seçenekler: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
-- **Gerçek cihazda canlı doğrulandı:** Redmi Note 8 (Snapdragon 665, 4 GB RAM, Android 10/11 MIUI) üzerinde Termux:API donanım entegrasyonu (kamera, mikrofon, pil, Android TTS), 9router arka plan servisi ve HTTPS web paneli canlı olarak çalıştırılıp doğrulandı.
+- **Gerçek cihaz doğrulaması:** Redmi Note 8 (Snapdragon 665, Android 10/11 MIUI) hedef cihazdır. Bu kod oturumunda gerçek telefona/ADB’ye erişim yok; kamera, mikrofon, pil, Android TTS, arka plan servisi ve HTTPS paneli donanım üzerinde yeniden doğrulanmadı. Otomatik testler mock cihaz kullanır.
 - **Çevrimdışı düşünemez.** Beyin buluttaki LLM'dir; internet yoksa sadece "beden" (kamera, TTS, bildirim) çalışır.
 - **Kamerayı ekran kilitliyken bazı MIUI sürümleri vermez.** Çözüm §10'da.
 - **Bir kişilik, bir cihaz.** Çok kullanıcılı/ölçeklenebilir bir sistem değil; dayanıklı bir ev asistanı.
@@ -261,7 +261,7 @@ En az bunlar:
 LLM_API_KEY=9r-buraya-9router-anahtarı
 LLM_MODEL=kr/claude-sonnet-4.5        # 9router'daki model adı; boş bırakırsan ilk uygun model seçilir
 KULLANICI_ADI="Adın Soyadın"          # asistan aramalarda "X'in dijital asistanıyım" der
-ASISTAN_ADI=Cebi                      # asistanın adı — istediğini koy
+ASISTAN_ADI=Aspasia                      # asistanın adı — istediğini koy
 ```
 
 Model listesini görmek için: `npm run modeller`
@@ -394,7 +394,7 @@ npm run modeller                 # 9router'daki modeller
 {
   "kullanici": {
     "ad": "",                       // Asistanın temsil ettiği kişi ("X'in asistanıyım")
-    "asistanAdi": "Cebi",           // Asistanın adı
+    "asistanAdi": "Aspasia",           // Asistanın adı
     "dil": "tr-TR",                 // TTS/STT dili
     "cihaz": "Xiaomi Redmi Note 8 (Termux)"   // Sistem mesajında kendini tanıtırken kullanır
   },
@@ -455,7 +455,7 @@ Değişiklik sonrası: `bash scripts/termux/durdur.sh beden beyin && bash script
 | `BEDEN_TOKEN` / `BEYIN_TOKEN` | dosyadan | Boşsa `~/.asistan/*.token` üretilir |
 | `BEYIN_HOST` / `BEYIN_PORT` | `0.0.0.0` / `20131` | Panel |
 | `BEDEN_URL` | `http://127.0.0.1:20130` | Beyin→beden |
-| `KULLANICI_ADI` / `ASISTAN_ADI` / `CIHAZ_ADI` | — / `Cebi` / Redmi Note 8 | Kimlik (boşluk varsa tırnakla) |
+| `KULLANICI_ADI` / `ASISTAN_ADI` / `CIHAZ_ADI` | — / `Aspasia` / Redmi Note 8 | Kimlik (boşluk varsa tırnakla) |
 | `ENABLE_9REMOTE` | `0` | `1` → `baslat.sh` 9remote'u da kaldırır |
 
 ### `~/.asistan/` içeriği
@@ -628,7 +628,7 @@ Sürüm çıkarmak: `package.json` sürümünü artır → commit → `gh releas
 
 - ✅ **Faz 0 — İskelet (v0.1.0):** beden, beyin, 16 araç, hafıza, görev sistemi, görüşme motoru + tarayıcı yazılım telefonu, PWA panel, Termux yaşam döngüsü scriptleri, proot/9remote kurulumu, indirilebilir sürüm.
 - ✅ **Hızlı ve yerel ses/ölçüm:** Piper Türkçe modeli `PIPER_MODEL` ile cihaz içinde, ağsız TTS; Groq/Cerebras arama sağlayıcıları `ARAMA_LLM_*` ile seçilebilir. Kara kutu ölçümleri `~/.asistan/log/kara-kutu.jsonl` dosyasına, günlük maliyet özeti `/api/maliyet` uç noktasına yazılır. `bash scripts/termux/kanarya-kur.sh +905...` her gece 03:00'te ses hattını sınar ve kırmızıysa SMS gönderir.
-- ✅ **Faz 1 — Telefonda canlandırma (Doğrulandı):** gerçek Redmi Note 8 üzerinde Termux:API donanım erişimi (kamera, pil, TTS), 9router arka plan servisi entegrasyonu, bellek optimizasyonu (512MB RAM sınırı), Termux:Boot otomatik açılış kancası ve HTTPS web paneli canlı test edilip doğrulandı.
+- ⏳ **Faz 1 — Telefonda canlandırma:** Redmi Note 8 hedefi için Termux:API, arka plan servisi, bellek sınırı, Termux:Boot ve HTTPS paneli kodu mevcut; gerçek cihazda uçtan uca doğrulama bu oturumda yapılmadı (bkz. `docs/yol-haritasi.md`).
 - ⏳ **Faz 2 — Duyular:** kayıtlı kişilerle yüz tanıma, QR → aksiyon, OCR akışları, hareket/ses tetikleyicileri ("kim geldi?"), uyandırma kelimesi, gelen SMS/arama özetini söyleme.
 - 🔄 **Faz 3 — VoIP köprüsü (gerçek arama):** Baresip SIP (Zadarma) adaptörü, ALSA dosya köprüsü, duvar saatine kilitli PCM besleyicisi, yankı kapısı ve adaptif VAD, çift yönlü ses akışı (Edge-TTS Emel + Groq Whisper), ctrl_tcp arama kontrolü entegre edildi. Ses güvenilirliği katmanı: besleyici kendi kendine iyileştirme, `⚠️ SES KANALI ÖLÜ` gözcüsü, **arama kapısı** (ses testi yeşil olmadan çaldırmaz) ve `scripts/termux/ses-testi.sh` teşhisi. Panelde 📳 VoIP'tan arama + 🗑 kayıt silme.
 - ⏳ **Faz 4 — Yaşam:** zamanlayıcılar ("yarın 9'da ara"), tekrarlı görevler, sabah özeti, hafıza konsolidasyonu, push bildirimleri, aile profilleri, isteğe bağlı yerel küçük model.
