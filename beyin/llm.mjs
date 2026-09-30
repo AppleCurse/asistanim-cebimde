@@ -147,35 +147,30 @@ export class LLMIstemci {
       });
     } catch (hata) {
       const affordMatch = hata.message?.match(/can only afford (\d+)/i);
-      if (affordMatch && Number(affordMatch[1]) >= 50 && (!maksToken || maksToken > Number(affordMatch[1]))) {
+      if (affordMatch && this.groqApiKey && !this.baseUrl.includes('groq.com')) {
+        console.log('[LLM] OpenRouter kredi kısıtı tespit edildi, Groq yedeğine geçiliyor (openai/gpt-oss-120b)');
+        const yedekIstemci = new LLMIstemci({
+          baseUrl: 'https://api.groq.com/openai/v1',
+          apiKey: this.groqApiKey,
+          model: 'openai/gpt-oss-120b',
+          sicaklik: this.sicaklik,
+          groqApiKey: this.groqApiKey,
+          elevenlabsApiKey: this.elevenlabsApiKey,
+          elevenlabsVoiceId: this.elevenlabsVoiceId,
+          elevenlabsModel: this.elevenlabsModel,
+          ttsSaglayici: this.ttsSaglayici,
+          telemetry: this.telemetri,
+        });
+        return yedekIstemci.sohbet(mesajlar, { araclar, model: 'openai/gpt-oss-120b', sicaklik, maksToken });
+      } else if (affordMatch && Number(affordMatch[1]) >= 50 && (!maksToken || maksToken > Number(affordMatch[1]))) {
         const yeniLimit = Math.max(50, Number(affordMatch[1]) - 10);
         console.log(`[LLM] Kredi kısıtı nedeniyle max_tokens ${yeniLimit} olarak ayarlanıp tekrar deneniyor...`);
         govde.max_tokens = yeniLimit;
-        try {
-          yanit = await this._istek('/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(govde),
-          });
-        } catch (tekrarHata) {
-          if (this.groqApiKey && !this.baseUrl.includes('groq.com')) {
-            console.log('[LLM] OpenRouter kredisi yetersiz, Groq yedeğine geçiliyor (openai/gpt-oss-120b)');
-            const yedekIstemci = new LLMIstemci({
-              baseUrl: 'https://api.groq.com/openai/v1',
-              apiKey: this.groqApiKey,
-              model: 'openai/gpt-oss-120b',
-              sicaklik: this.sicaklik,
-              groqApiKey: this.groqApiKey,
-              elevenlabsApiKey: this.elevenlabsApiKey,
-              elevenlabsVoiceId: this.elevenlabsVoiceId,
-              elevenlabsModel: this.elevenlabsModel,
-              ttsSaglayici: this.ttsSaglayici,
-              telemetry: this.telemetri,
-            });
-            return yedekIstemci.sohbet(mesajlar, { araclar, model: 'openai/gpt-oss-120b', sicaklik, maksToken });
-          }
-          throw tekrarHata;
-        }
+        yanit = await this._istek('/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(govde),
+        });
       } else if (this.groqApiKey && !this.baseUrl.includes('groq.com')) {
         console.log('[LLM] Sağlayıcı hatası, Groq yedeğine geçiliyor (openai/gpt-oss-120b)');
         const yedekIstemci = new LLMIstemci({
