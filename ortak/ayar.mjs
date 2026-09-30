@@ -58,7 +58,7 @@ export const VARSAYILAN_AYAR = {
       ttsVoice: 'tr-TR-EmelNeural',
     },
     stt: 'android',    // android | 9router | groq
-    tts: 'android',    // android | 9router | edge-tts
+    tts: 'piper',     // piper | android | 9router | edge-tts
     maksArac: 8,       // bir yanıt için en fazla araç turu
     hafizaLimiti: 6000 // sistem mesajına eklenen hafıza karakter sınırı
   },

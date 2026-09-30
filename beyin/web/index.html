@@ -24,6 +24,12 @@
   </header>
 
   <main>
+    <section class="cebi-hero" id="cebiHero">
+      <div class="cebi-ust"><div><span class="cebi-kucuk">DİJİTAL VARLIĞIN</span><h2><span id="cebiAd">Cebimon</span> <span class="sinif" id="cebiSinif">Kıvılcım</span></h2><p id="cebiMesaj">Henüz yeniyim. Bana ne yapacağını öğret.</p></div><div class="cebi-yuz" id="cebiYuz">✦</div></div>
+      <div class="cebi-durum"><span id="cebiMod">Hazır</span><span id="cebiCihaz">Cihaz kontrol ediliyor…</span></div>
+      <div class="cebi-eylemler"><button class="cebi-aksiyon" data-ortam="genel" data-amac="Kullanıcıya bulunduğu ortamda yardımcı ol">✦ Yanımda ol</button><button class="cebi-aksiyon" data-ortam="is" data-amac="İşimi adım adım takip et">💼 İş modu</button><button class="cebi-aksiyon" data-ortam="gezi" data-amac="Bulunduğum yeri ve gördüklerimi anlamama yardım et">🧭 Gezgin modu</button></div>
+    </section>
+
     <section class="kart">
       <h2>Yaşam belirtileri</h2>
       <div class="izgara" id="durum">
@@ -32,18 +38,26 @@
       <p class="soluk" id="agBilgi"></p>
     </section>
 
-    <section class="kart">
-      <h2>Sohbet</h2>
+    <section class="kart sohbet-karti">
+      <div class="baslik-satiri"><div><h2>Asistan</h2><p class="soluk alt-baslik">Ne yapmak istiyorsun?</p></div><span class="hazir-rozet">● Hazır</span></div>
+      <div class="hizli-eylemler" aria-label="Hızlı işlemler">
+        <button class="hizli" data-hizli="Pili, sıcaklığı ve bağlantıyı kontrol et">🔋<span>Durumu kontrol et</span></button>
+        <button class="hizli" data-hizli="Etrafına bak ve önemli gördüklerini söyle">👁<span>Etrafına bak</span></button>
+        <button class="hizli" data-hizli="Bugün yapmam gereken önemli işleri özetle">📋<span>Günümü özetle</span></button>
+        <button class="hizli" data-hizli="Son aramaları ve mesajları özetle">📞<span>Son görüşmeler</span></button>
+      </div>
       <div class="sohbet" id="sohbet"></div>
       <form class="satir" id="sohbetForm">
-        <input id="mesaj" placeholder="Bir şey söyle… (örn. 'etrafa bak', 'pil kaç?', 'Ahmet'i ara ve toplantıyı ertele')" autocomplete="off" />
+        <button class="mikrofon" type="button" id="mikrofon" title="Konuşarak yaz">🎙</button>
+        <input id="mesaj" placeholder="Bir şey söyle veya yaz…" autocomplete="off" />
         <button class="buton birincil" type="submit" id="gonder">Gönder</button>
       </form>
       <div class="satir" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-        <button class="buton" id="bak">👁 Bak</button>
-        <button class="buton" id="soyle">🔊 Söylet</button>
-        <button class="buton" id="sifirla">Sohbeti sıfırla</button>
+        <button class="buton" id="bak">📷 Kamera</button>
+        <button class="buton" id="soyle">🔊 Telefonda seslendir</button>
+        <button class="buton" id="sifirla">Sohbeti temizle</button>
       </div>
+      <p class="soluk yardim" id="sesDurumu">Mikrofon düğmesine dokun, konuş; terminal gerekmez.</p>
     </section>
 
     <section class="kart">
