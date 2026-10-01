@@ -182,12 +182,12 @@ test('SIP: hedef numara tam SIP URI formatına dönüştürülür', () => {
   const kopru = sahteKopru({ tmp });
   kopru.sipServer = 'pbx.zadarma.com';
   const formatli = kopru.formatlaNumara('05373351866');
-  assert.equal(formatli, '00905373351866');
+  assert.equal(formatli, '905373351866');
 
   const dialParam = formatli.includes('@')
     ? (formatli.startsWith('sip:') ? formatli : `sip:${formatli}`)
     : `sip:${formatli}@${kopru.sipServer}`;
-  assert.equal(dialParam, 'sip:00905373351866@pbx.zadarma.com');
+  assert.equal(dialParam, 'sip:905373351866@pbx.zadarma.com');
 
   fs.rmSync(tmp, { recursive: true, force: true });
 });
