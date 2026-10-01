@@ -135,6 +135,7 @@ export class SipKoprusu {
     this.log = log;
     this.port = port;
     this.host = host;
+    this.sipServer = process.env.SIP_SERVER || 'pbx.zadarma.com';
     this.soket = null;
     this.aktifGorusme = null;
     this.calanSesPcm = null;
@@ -592,8 +593,12 @@ export class SipKoprusu {
     });
     soket.on('close', () => this._temizle());
 
-    // Aramayı çevir
-    komutGonder({ command: 'dial', params: hedefNumara });
+    // Aramayı çevir (Baresip UA eşleşmesi için domain içeren tam SIP URI formatı kullanılır)
+    const dialParam = hedefNumara.includes('@')
+      ? (hedefNumara.startsWith('sip:') ? hedefNumara : `sip:${hedefNumara}`)
+      : `sip:${hedefNumara}@${this.sipServer}`;
+    this.log.bilgi(`Baresip arama komutu gönderiliyor: dial ${dialParam}`);
+    komutGonder({ command: 'dial', params: dialParam });
     // Dürüst rapor: "çevrildi" ≠ "duyuldu". Ses kanalı gözcüsü sonucu ayrıca loglar.
     return {
       basarili: true,

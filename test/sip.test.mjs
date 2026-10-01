@@ -176,3 +176,18 @@ test('SIP: _spkFdYenidenAc spk.raw için taze fd açar ve _temizle fd/stream tem
   await new Promise((r) => setTimeout(r, 50));
   fs.rmSync(tmp, { recursive: true, force: true });
 });
+
+test('SIP: hedef numara tam SIP URI formatına dönüştürülür', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sip-uri-'));
+  const kopru = sahteKopru({ tmp });
+  kopru.sipServer = 'pbx.zadarma.com';
+  const formatli = kopru.formatlaNumara('05373351866');
+  assert.equal(formatli, '00905373351866');
+
+  const dialParam = formatli.includes('@')
+    ? (formatli.startsWith('sip:') ? formatli : `sip:${formatli}`)
+    : `sip:${formatli}@${kopru.sipServer}`;
+  assert.equal(dialParam, 'sip:00905373351866@pbx.zadarma.com');
+
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
