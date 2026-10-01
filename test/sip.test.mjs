@@ -191,3 +191,17 @@ test('SIP: hedef numara tam SIP URI formatına dönüştürülür', () => {
 
   fs.rmSync(tmp, { recursive: true, force: true });
 });
+
+test('SIP: _acilisCaliniyor aktifken barge-in sesi kesmez', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sip-bargein-'));
+  const kopru = sahteKopru({ tmp });
+  kopru._acilisCaliniyor = true;
+  kopru.calanSesPcm = Buffer.alloc(1000);
+  kopru.sesCalmaDurduruldu = false;
+
+  assert.equal(kopru._acilisCaliniyor, true);
+  kopru._temizle();
+  assert.equal(kopru._acilisCaliniyor, false);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+

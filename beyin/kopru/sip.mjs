@@ -141,6 +141,7 @@ export class SipKoprusu {
     this.calanSesPcm = null;
     this.calanSesKonumu = 0;
     this.sesCalmaDurduruldu = false;
+    this._acilisCaliniyor = false;
     this.besleyiciZamanlayici = null;
     this.inFifoFd = null;
     this.outFifoFd = null;
@@ -292,6 +293,7 @@ export class SipKoprusu {
           } else {
             this.calanSesPcm = null;
             this.calanSesKonumu = 0;
+            this._acilisCaliniyor = false;
           }
         }
         try {
@@ -346,6 +348,7 @@ export class SipKoprusu {
     let sessizlikAdimSayisi = 0;
     let tabanGurultu = 100;
     let sonSttZamani = 0;
+    let bargeInSayaci = 0;
 
     try {
       this.outFifoStream = fs.createReadStream(null, { fd: this.outFifoFd, autoClose: true, highWaterMark: 320 });
@@ -357,11 +360,18 @@ export class SipKoprusu {
         const asistanKonusuyor = Boolean(this.calanSesPcm && !this.sesCalmaDurduruldu);
 
         // 1. YANKI KAPISI & BARGE-IN:
+        // Açılış brifingi sırasında hat oturma çıtırtısı veya tekil gürültüler asistanı ASLA susturamaz.
         if (asistanKonusuyor) {
           konusmaParcalari = [];
-          if (rms > 1800) {
-            this.log.bilgi(`[Barge-in] Yüksek sesli kesme algılandı (RMS ${Math.round(rms)}), asistan susturuluyor`);
-            tasiyici.sesDurdur();
+          if (!this._acilisCaliniyor && rms > 2400) {
+            bargeInSayaci++;
+            if (bargeInSayaci >= 15) { // En az 300ms aralıksız yüksek ses
+              this.log.bilgi(`[Barge-in] Karşı taraf söz kesti (RMS ${Math.round(rms)}), asistan susturuluyor`);
+              bargeInSayaci = 0;
+              tasiyici.sesDurdur();
+            }
+          } else {
+            bargeInSayaci = 0;
           }
           return;
         }
@@ -499,6 +509,7 @@ export class SipKoprusu {
             this._acilisPcm = null;
             this.calanSesKonumu = 0;
             this.sesCalmaDurduruldu = false;
+            this._acilisCaliniyor = true;
             return;
           }
           this.log.bilgi('TTS sesi dönüştürülüyor ve çalma kuyruğuna alınıyor...');
@@ -617,6 +628,7 @@ export class SipKoprusu {
     }
     this.calanSesPcm = null;
     this._acilisPcm = null;
+    this._acilisCaliniyor = false;
     this.sesCalmaDurduruldu = true;
     this.aktifGorusme = null;
   }
