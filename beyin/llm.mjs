@@ -149,11 +149,11 @@ export class LLMIstemci {
     } catch (hata) {
       const affordMatch = hata.message?.match(/can only afford (\d+)/i);
       if (affordMatch && this.groqApiKey && !this.baseUrl.includes('groq.com')) {
-        console.log('[LLM] OpenRouter kredi kısıtı tespit edildi, Groq yedeğine geçiliyor (openai/gpt-oss-120b)');
+        console.log('[LLM] OpenRouter kredi kısıtı tespit edildi, Groq yedeğine geçiliyor (llama-3.3-70b-versatile)');
         const yedekIstemci = new LLMIstemci({
           baseUrl: 'https://api.groq.com/openai/v1',
           apiKey: this.groqApiKey,
-          model: 'openai/gpt-oss-120b',
+          model: 'llama-3.3-70b-versatile',
           sicaklik: this.sicaklik,
           groqApiKey: this.groqApiKey,
           elevenlabsApiKey: this.elevenlabsApiKey,
@@ -162,7 +162,7 @@ export class LLMIstemci {
           ttsSaglayici: this.ttsSaglayici,
           telemetry: this.telemetri,
         });
-        return yedekIstemci.sohbet(mesajlar, { araclar, model: 'openai/gpt-oss-120b', sicaklik, maksToken });
+        return yedekIstemci.sohbet(mesajlar, { araclar, model: 'llama-3.3-70b-versatile', sicaklik, maksToken });
       } else if (affordMatch && Number(affordMatch[1]) >= 50 && (!maksToken || maksToken > Number(affordMatch[1]))) {
         const yeniLimit = Math.max(50, Number(affordMatch[1]) - 10);
         console.log(`[LLM] Kredi kısıtı nedeniyle max_tokens ${yeniLimit} olarak ayarlanıp tekrar deneniyor...`);
@@ -173,11 +173,11 @@ export class LLMIstemci {
           body: JSON.stringify(govde),
         });
       } else if (this.groqApiKey && !this.baseUrl.includes('groq.com')) {
-        console.log('[LLM] Sağlayıcı hatası, Groq yedeğine geçiliyor (openai/gpt-oss-120b)');
+        console.log('[LLM] Sağlayıcı hatası, Groq yedeğine geçiliyor (llama-3.3-70b-versatile)');
         const yedekIstemci = new LLMIstemci({
           baseUrl: 'https://api.groq.com/openai/v1',
           apiKey: this.groqApiKey,
-          model: 'openai/gpt-oss-120b',
+          model: 'llama-3.3-70b-versatile',
           sicaklik: this.sicaklik,
           groqApiKey: this.groqApiKey,
           elevenlabsApiKey: this.elevenlabsApiKey,
@@ -186,7 +186,7 @@ export class LLMIstemci {
           ttsSaglayici: this.ttsSaglayici,
           telemetry: this.telemetri,
         });
-        return yedekIstemci.sohbet(mesajlar, { araclar, model: 'openai/gpt-oss-120b', sicaklik, maksToken });
+        return yedekIstemci.sohbet(mesajlar, { araclar, model: 'llama-3.3-70b-versatile', sicaklik, maksToken });
       } else if (this.openrouterApiKey && !this.baseUrl.includes('openrouter.ai')) {
         console.log('[LLM] 9router başarısız, OpenRouter yedeğine geçiliyor (meta-llama/llama-3.3-70b-instruct)');
         const yedekIstemci = new LLMIstemci({

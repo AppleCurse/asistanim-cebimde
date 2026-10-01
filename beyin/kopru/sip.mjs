@@ -465,22 +465,17 @@ export class SipKoprusu {
     const sahip = this.ayar?.kullanici?.ad ? `${this.ayar.kullanici.ad}'ın asistanı` : 'asistanınız';
     const acilis = gorev?.acilis || `Merhaba! Ben ${sahip} ${asistanAdi}, nasılsınız?`;
 
-    // Açılış konuşmasını arama çevrilmeden ÖNCE arka planda hemen seslendirip PCM'e dönüştür (sıfır gecikme)
+    // Açılış konuşmasını arama çevrilmeden ÖNCE seslendirip PCM'e dönüştür (sıfır gecikme)
     this._acilisPcm = null;
-    let acilisPcmPromise = null;
     if (this.llm && typeof this.llm.seslendir === 'function') {
       this.log.bilgi(`Açılış konuşması önceden hazırlanıyor: "${acilis.slice(0, 60)}..."`);
-      acilisPcmPromise = this.llm.seslendir(acilis)
-        .then((buf) => pcmyeDonustur(buf))
-        .then((pcm) => {
-          this._acilisPcm = pcm;
-          this.log.bilgi(`Açılış PCM sesi hazır (${pcm.length} bayt)`);
-          return pcm;
-        })
-        .catch((e) => {
-          this.log.uyari(`Açılış sesi önbellekleme hatası: ${e.message}`);
-          return null;
-        });
+      try {
+        const buf = await this.llm.seslendir(acilis);
+        this._acilisPcm = await pcmyeDonustur(buf);
+        this.log.bilgi(`Açılış PCM sesi hazır (${this._acilisPcm.length} bayt)`);
+      } catch (e) {
+        this.log.uyari(`Açılış sesi önbellekleme hatası: ${e.message}`);
+      }
     }
 
     const soket = await this._baglan();
@@ -505,17 +500,6 @@ export class SipKoprusu {
             this.calanSesKonumu = 0;
             this.sesCalmaDurduruldu = false;
             return;
-          }
-          if (acilisPcmPromise && !this._acilisPcm && !this.calanSesPcm) {
-            const pcm = await acilisPcmPromise;
-            if (pcm && !this.calanSesPcm) {
-              this.log.bilgi('Açılış PCM sesi vaat tamamlanarak yayına verildi');
-              this.calanSesPcm = pcm;
-              this._acilisPcm = null;
-              this.calanSesKonumu = 0;
-              this.sesCalmaDurduruldu = false;
-              return;
-            }
           }
           this.log.bilgi('TTS sesi dönüştürülüyor ve çalma kuyruğuna alınıyor...');
           const pcm = await pcmyeDonustur(buffer);
