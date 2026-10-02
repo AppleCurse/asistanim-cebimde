@@ -252,10 +252,11 @@ export class SipKoprusu {
   formatlaNumara(num) {
     if (String(num || '').includes('@')) return String(num);
     let n = String(num || '').replace(/\D+/g, '');
-    if (n.startsWith('00')) n = n.slice(2);
-    if (n.startsWith('0') && n.length === 11) return '90' + n.slice(1);
-    if (n.length === 10) return '90' + n;
-    return n;
+    if (n.startsWith('00')) return n;
+    if (n.startsWith('90') && n.length === 12) return '00' + n;
+    if (n.startsWith('0') && n.length === 11) return '0090' + n.slice(1);
+    if (n.length === 10) return '0090' + n;
+    return '00' + n;
   }
 
   /** Baresip mikrofon girişine (mic.raw) kesintisiz, duvar saatine kilitli S16LE PCM basan besleyici.
@@ -493,7 +494,7 @@ export class SipKoprusu {
     if (this.llm && typeof this.llm.seslendir === 'function') {
       this.log.bilgi('Açılış konuşması önceden hazırlanıyor (metin günlüğe yazılmadı).');
       try {
-        const buf = await this.llm.seslendir(acilis);
+        const buf = await this.llm.seslendir(acilis, gorev?.ses);
         this._acilisPcm = await pcmyeDonustur(buf);
         this.log.bilgi(`Açılış PCM sesi hazır (${this._acilisPcm.length} bayt)`);
       } catch (e) {

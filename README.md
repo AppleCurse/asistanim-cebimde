@@ -79,6 +79,7 @@ Panelden ya da terminalden yazdığın cümleye göre asistan uygun **aracı** k
 | "Şunu unutma: bakkal 21:00'de kapanıyor" | Kalıcı hafızaya yazar; sonraki sohbetlerde hatırlar | `hatirla` |
 | "Bakkalla ilgili ne biliyorsun?" | Hafızada arar | `hafiza_ara` |
 | "Dişçiyi ara, Perşembe randevumu bir hafta ertele" | **Görüşme görevi** planlar: kimi arayacak, ne söyleyecek, neye evet diyebilir, neye asla — panelde onaya sunar | `gorev_olustur` |
+| "Arabanın akü kontrolünü nasıl yaparım?" | Uygulamalı iş için adım tahtası oluşturur (kamera/mikrofon oturumu) | `cebi_planla` |
 | "Saat kaç?" | Tarih/saat | `saat` |
 
 Bunlara ek olarak:
@@ -424,19 +425,27 @@ npm run modeller                 # 9router'daki modeller
       "apiKey": "",
       "model": "",                  // boş → /v1/models'tan otomatik (sonnet/gpt-4/gemini/glm/kimi/deepseek tercih)
       "sicaklik": 0.4,
-      "sttModel": "whisper-1",      // 9router STT modeli
+      "sttModel": "whisper-large-v3-turbo",  // 9router STT modeli
       "ttsModel": "tts-1",          // 9router TTS modeli
-      "ttsVoice": "alloy"
+      "ttsVoice": "tr-TR-EmelNeural",        // edge-tts/9router ses adı
+      "elevenlabsApiKey": "",        // isteğe bağlı — sk_...
+      "elevenlabsVoiceId": "cgSgspJ2msm6clMCkdW9",
+      "fishAudioApiKey": ""          // isteğe bağlı
     },
-    "stt": "android",               // android | 9router  → `dinle` aracının kulağı
-    "tts": "android",               // android | 9router  → `soyle` aracının ağzı
+    "stt": "android",               // android (varsayılan, ücretsiz) | 9router | groq
+    "tts": "piper",                 // piper (varsayılan, ağsız) | elevenlabs | fish_audio | edge-tts | android | 9router
     "maksArac": 8,                  // bir yanıt için en fazla araç turu
     "hafizaLimiti": 6000            // sistem mesajına eklenen hafıza karakteri
   },
   "arama": {
-    "varsayilanMod": "tarayici",    // tarayici | hucresel | voip (baresip/SIP — bkz. docs/telefon-gorusmesi.md)
+    "varsayilanMod": "voip",        // tarayici | hucresel | voip (baresip/SIP — bkz. docs/telefon-gorusmesi.md)
     "aiOlduguSoylensin": true,      // görüşme başında "dijital asistanım" desin
-    "maksSure": 900                 // saniye; dolunca görüşme kapanır ve özetlenir
+    "maksSure": 900,                // saniye; dolunca görüşme kapanır ve özetlenir
+    "llm": {                        // isteğe bağlı: aramalar için ayrı/daha hızlı model
+      "baseUrl": "",               // boş → ana LLM kullanılır
+      "apiKey": "",
+      "model": ""
+    }
   }
 }
 ```
@@ -545,31 +554,41 @@ asistanim-cebimde/
 │   ├── server.mjs            HTTP API (:20130), rota tablosu, izin kapıları, dosya sunumu
 │   ├── termux-api.mjs        gerçek cihaz: termux-* komut sarmalayıcıları, ffmpeg küçültme, zbar
 │   └── mock.mjs              sahte cihaz (bilgisayarda geliştirme/test)
+├── ortak/
+│   ├── ayar.mjs              ayarlar, tokenlar, dizinler, log (~/.asistan)
+│   └── telemetri.mjs         kara kutu: token/maliyet/ses olayları; /api/maliyet, /api/kara-kutu
 ├── beyin/                    AJAN + PANEL + KÖPRÜ
 │   ├── index.mjs             HTTP(S) sunucu (:20131), REST API, statik dosyalar, WS, TLS
 │   ├── asistan.mjs           araç kullanan sohbet döngüsü, sistem mesajı, oturumlar, günlük
 │   ├── araclar.mjs           17 araç (OpenAI function-calling şeması + çalıştırıcı)
+│   ├── cebi.mjs              Cebimon: uygulamalı görev tahtası, adım doğrulama, kamera/mikrofon oturumu
 │   ├── gorev.mjs             görüşme görevleri: brifing, kişilik, özet; ~/.asistan/gorevler
-│   ├── llm.mjs               9router istemcisi: sohbet, STT, TTS, model seçimi, JSON ayıklama
+│   ├── llm.mjs               9router istemcisi: sohbet, STT, TTS, çoklu sağlayıcı, yedek zinciri
 │   ├── beden-istemci.mjs     beyin→beden HTTP istemcisi
 │   ├── hafiza.mjs            hafiza.md okuma/yazma/arama
+│   ├── kuyruk.mjs            istek kuyruğu (eş zamanlı sohbet koruması)
 │   ├── cli.mjs               terminal sohbeti, --modeller
 │   ├── kopru/motor.mjs       görüşme motoru (taşıyıcıdan bağımsız)
 │   ├── kopru/tarayici.mjs    WebSocket yazılım telefonu taşıyıcısı (/ws/telefon)
+│   ├── kopru/sip.mjs         Baresip/SIP köprüsü: ctrl_tcp, ses akışı, VAD, arama kapısı
 │   └── web/                  index.html+panel.js (panel), telefon.html+telefon.js (softphone),
 │                             giris.html, stil.css, manifest.webmanifest, sw.js, ikon-*.png
 ├── scripts/
 │   ├── termux/indir-kur.sh   tek satır kurulum (paket indir → kur.sh)
 │   ├── termux/kur.sh         Termux kurulumu (--tls, --proot)
 │   ├── termux/9router-servis.sh TUI'siz 9router arka plan servisi (--max-old-space-size=512)
-│   ├── termux/baslat.sh      sshd + 9router + beden + beyin (+9remote) → servis döngüleri
+│   ├── termux/baslat.sh      sshd + 9router + beden + beyin (+baresip, +tünel, +9remote) → servis döngüleri
 │   ├── termux/servis.sh      "ölürse yeniden doğur" döngüsü, kademeli bekleme
-│   ├── termux/durdur.sh      servisleri durdur      termux/durum.sh   sağlık + panel adresi
-│   ├── termux/boot-kur.sh    Termux:Boot kancası    termux/tls-uret.sh  kendinden imzalı sertifika
+│   ├── termux/durdur.sh      servisleri durdur      termux/durum.sh    sağlık + panel adresi
+│   ├── termux/boot-kur.sh    Termux:Boot kancası    termux/tls-uret.sh kendinden imzalı sertifika
+│   ├── termux/restart-beyin.sh  sadece beyin sürecini yeniden başlatır
+│   ├── termux/tunel.sh       Cloudflare tüneli (CLOUDFLARED_TUNNEL_TOKEN ile arka planda)
+│   ├── termux/kanarya-kur.sh  gece ses hattı sınaması kurar (SMS uyarı)
+│   ├── termux/kanarya-calistir.sh  kanarya testini manuel çalıştırır (npm run kanarya)
 │   ├── proot/ubuntu-kur.sh   Ubuntu + Node 22 + 9remote  (icerde-kur.sh Ubuntu içinde çalışır)
 │   ├── proot/9remote.sh      Ubuntu içinde 9remote (depo ve ~/.asistan bağlı)
 │   └── dev/sahte-ortam.mjs   telefon olmadan tam ortam; dev/paketle.sh sürüm paketi
-├── test/                     node:test — sahte 9router + sahte cihaz ile uçtan uca (81 test)
+├── test/                     node:test — sahte 9router + sahte cihaz ile uçtan uca
 ├── docs/                     gerçek durum, mimari, kurulum, telefon görüşmesi, yol haritası, donanım
 ├── .github/workflows/        surum.yml: release yayınlanınca test + paket + dosya yükleme
 ├── AGENTS.md                 bu depoda çalışan yapay zekâ ajanları için kurallar
@@ -588,18 +607,26 @@ asistanim-cebimde/
 | `POST /api/giris` `{token}` | anahtarı doğrular, `HttpOnly` oturum çerezi kurar (URL query tokenı kabul edilmez) |
 | `GET /api/durum` | beden sağlığı + yetenekler, LLM, ağ, bellek |
 | `GET /api/modeller` | 9router model listesi |
+| `GET /api/maliyet?gun=N` | son N günlük token/maliyet raporu |
+| `GET /api/kara-kutu?limit=N` | ham telemetri olayları (llm, stt, tts, pil) |
 | `POST /api/sohbet` `{oturum, metin, resimler?}` | asistan yanıtı `{metin, adimlar, kullanim}` |
 | `POST /api/sohbet/sifirla` `{oturum}` | bağlamı temizle |
 | `GET/POST /api/hafiza` | oku / `{metin, etiket}` ekle |
 | `POST /api/bak` `{kamera}` | fotoğraf (base64) |
 | `POST /api/soyle` `{metin}` | hoparlörden söyle |
 | `POST /api/pil` | pil |
+| `POST /api/sese-yazi` `{ses, mime}` | ses kaydı (base64) → metin (9router STT) |
+| `GET /api/cebi` | Cebimon durumu + pil + günlük maliyet |
+| `POST /api/cebi/planla` `{talimat}` | uygulamalı görev tahtası oluştur |
+| `POST /api/cebi/degerlendir` `{gorsel?, ses?}` | adım kamera/mikrofon ile doğrula |
+| `POST /api/cebi/onay` `{onay}` | adımı onayla/reddet |
 | `GET/POST /api/gorevler` | listele / `{talimat, numara?}` planla |
 | `GET/POST /api/gorevler/:id` | görev / güncelle (`durum`, `kisi`, `mod`, …) |
 | `POST /api/gorevler/:id/voip-ara` | VoIP'tan ara (asistan konuşur; ses kanalı kapalıysa 423) |
 | `POST /api/gorevler/:id/hucresel-ara` | hattan çevir, brifing döner |
 | `POST /api/gorevler/:id/sonuc` `{basarili, ozet, kararlar?, takip?}` | elle sonuç |
 | `POST /api/gorevler/:id/sil` | görev kaydını + transkripti kalıcı sil (mahremiyet) |
+| `POST /api/voip/ara` `{numara, gorev?}` | görev ID'siz direkt VoIP çevirme |
 | `WS /ws/telefon` | `HttpOnly` oturum çerezi (veya uyumlu istemcide Bearer doğrulaması) ile görüşme: `{tip:'baslat', gorevId?, mod}` → `{tip:'metin'…}`, ses ikili çerçeve; `{tip:'metin'}`, `{tip:'ses', mime}`+binary, `{tip:'bitir'}` |
 
 ### Beden (`:20130`, `Authorization: Bearer <beden.token>`)

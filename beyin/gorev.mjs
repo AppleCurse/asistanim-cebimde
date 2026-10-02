@@ -53,7 +53,7 @@ export class GorevYoneticisi {
     const yol = this._yol(id);
     fs.rmSync(`${yol}.tmp`, { force: true }); // yarım yazım kalıntısı
     if (!fs.existsSync(yol)) return false;
-    fs.rmSync(yol);
+    fs.rmSync(yol, { force: true });
     this.log?.bilgi(`görev kaydı silindi #${id} (transkript dahil)`);
     return true;
   }

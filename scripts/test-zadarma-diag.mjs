@@ -20,7 +20,5 @@ async function api(method, params = {}) {
   console.log(method, res.status, await res.text());
 }
 
-console.log('--- PBX Internal Details ---');
-await api('/v1/pbx/internal/', { return_password: 'true' });
-await api('/v1/pbx/internal/100/');
-await api('/v1/pbx/internal/101/');
+console.log('--- PBX Stats ---');
+await api('/v1/statistics/pbx/', { start: '2026-10-02 00:00:00', end: '2026-10-02 23:59:59' });

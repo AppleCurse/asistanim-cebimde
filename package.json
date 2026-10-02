@@ -12,7 +12,8 @@
     "beyin": "node beyin/index.mjs",
     "sohbet": "node beyin/cli.mjs",
     "modeller": "node beyin/cli.mjs --modeller",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "kanarya": "bash scripts/termux/kanarya-calistir.sh"
   },
   "dependencies": {
     "ws": "^8.18.0"

@@ -44,7 +44,7 @@ export class LLMIstemci {
     sicaklik = 0.4,
     sttModel = 'whisper-large-v3-turbo',
     ttsModel = 'tts-1',
-    ttsVoice = 'tr-TR-AhmetNeural',
+    ttsVoice = 'tr-TR-EmelNeural',
     ttsSaglayici,
     elevenlabsApiKey,
     elevenlabsVoiceId,
@@ -76,7 +76,7 @@ export class LLMIstemci {
     this.sicaklik = sicaklik;
     this.sttModel = sttModel || process.env.STT_MODEL || 'whisper-large-v3-turbo';
     this.ttsModel = ttsModel || process.env.TTS_MODEL || 'tts-1';
-    this.ttsVoice = ttsVoice || process.env.TTS_VOICE || 'tr-TR-AhmetNeural';
+    this.ttsVoice = ttsVoice || process.env.TTS_VOICE || 'tr-TR-EmelNeural';
     this.zamanAsimi = zamanAsimi;
     this.telemetri = telemetry || new Telemetri();
     this.piperModel = process.env.PIPER_MODEL || '';

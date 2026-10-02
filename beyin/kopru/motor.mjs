@@ -173,7 +173,7 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
     if (!sunucuSesi) return;
     this._durumVer('konusuyor');
     try {
-      const ses = await this.llm.seslendir(metin);
+      const ses = await this.llm.seslendir(metin, this.gorev?.ses);
       await this.tasiyici.sesCal?.(ses, 'audio/mpeg');
     } catch (hata) {
       this.log?.uyari(`TTS hatası, metin olarak düşüldü: ${hata.message}`);
