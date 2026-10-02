@@ -103,6 +103,7 @@ else
     fi
     if [[ $KIRIK -eq 0 ]]; then
       tamam "Yeniden başlatma sonrası fd'ler temiz (adım 2-3 nihai kararı verecek)"
+      SORUN=0
     else
       hata "Yeniden başlatma sonrası fd'ler hâlâ sorunlu"
     fi

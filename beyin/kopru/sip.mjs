@@ -158,7 +158,7 @@ export class SipKoprusu {
     this._sesKanaliOlusuLoglandi = false;
     this.sesKanaliDurumu = 'dogrulanmadi'; // dogrulanmadi | saglam | olu
     this.sesKanalGozcusu = null;
-    this._aramaKilit = false;
+    this.spkKeeperFd = null;
     this._fifoKilitleriniAc();
   }
 
@@ -171,6 +171,9 @@ export class SipKoprusu {
       this.log?.uyari?.(`inFifo açılamadı: ${e.message}`);
     }
     try {
+      if (this.spkKeeperFd == null && fs.existsSync(this.outFifoYolu)) {
+        this.spkKeeperFd = fs.openSync(this.outFifoYolu, fs.constants.O_RDWR);
+      }
       if (this.outFifoFd == null && fs.existsSync(this.outFifoYolu)) {
         this.outFifoFd = fs.openSync(this.outFifoYolu, fs.constants.O_RDWR);
       }
@@ -270,6 +273,11 @@ export class SipKoprusu {
     const sessizPaket = Buffer.alloc(320); // 20ms @ 8000Hz 16-bit mono = 320 byte
     let baslangicZamani = Date.now();
     let gonderilenPaketSayisi = 0;
+    this._besleyiciZamaniniSifirla = () => {
+      baslangicZamani = Date.now();
+      gonderilenPaketSayisi = 0;
+      this._yazmaHatasiBaslangic = null;
+    };
 
     if (this.besleyiciZamanlayici) clearInterval(this.besleyiciZamanlayici);
     this.besleyiciZamanlayici = setInterval(() => {
@@ -308,6 +316,11 @@ export class SipKoprusu {
             gonderilenPaketSayisi++;
           }
         } catch (hata) {
+          if (hata.code === 'EAGAIN' && !this.cagriAktif) {
+            // Çaldırma esnasında karşı taraf henüz açmadığından ALSA mikrofondan okumaz;
+            // 64 KB boru dolunca gelen EAGAIN normaldir, hata sayılmaz
+            break;
+          }
           this.besleyiciHataSayaci++;
           const simdi = Date.now();
           if (this._yazmaHatasiBaslangic == null) this._yazmaHatasiBaslangic = simdi;
@@ -560,6 +573,7 @@ export class SipKoprusu {
       baslatildi = true;
       this.cagriAktif = true;
       this.log.bilgi(`📞 ÇAĞRI AKTİF (${sebep})! Aspasia söze başlıyor.`);
+      this._besleyiciZamaniniSifirla?.();
       // Kanal gözcüsü: 2 sn içinde 100 paket yazılamazsa SES KANALI ÖLÜ diye bağır
       this._sesKanalGozcusuBaslat();
       gorusme.baslat().catch((e) => this.log.hata(`Görüşme başlatma: ${e.message}`));
@@ -576,9 +590,13 @@ export class SipKoprusu {
       this.log.bilgi(`[Baresip Olay] ${tip} (ayrıntılar gizli)`);
       if (tip === 'CALL_ESTABLISHED' || tip === 'CALL_ANSWERED') {
         gorusmeyiBaslat(`SIP ${tip}`);
+      } else if (tip === 'CALL_INCOMING') {
+        this.log.bilgi(`[Baresip] Gelen çağrı tespit edildi: ${msg.peeruri || ''} - otomatik yanıtlanıyor`);
+        komutGonder({ command: 'accept' });
       } else if (tip === 'CALL_CLOSED') {
         this.log.bilgi('📴 ÇAĞRI SONLANDI (Karşı taraf veya santral kapattı).');
         gorusme.bitir('karsi-kapatti').catch(() => {});
+        this._temizle();
       }
     });
 
@@ -587,6 +605,21 @@ export class SipKoprusu {
       ayristirici.besle(d);
     });
     soket.on('close', () => this._temizle());
+    soket.on('error', (e) => {
+      this.log.uyari(`Baresip soket hatası: ${e.message}`);
+      this._temizle();
+    });
+
+    // 45 saniye çağrı cevaplanma zaman aşımı (asılı kalma koruması)
+    clearTimeout(this._cagriZamanAsimi);
+    this._cagriZamanAsimi = setTimeout(() => {
+      if (!this.cagriAktif) {
+        this.log.uyari('45 saniye içinde çağrı açılmadı veya bağlantı kurulamadı — kilit ve oturum temizleniyor.');
+        gorusme.bitir('cevap-yok').catch(() => {});
+        komutGonder({ command: 'hangup' });
+        this._temizle();
+      }
+    }, 45000);
 
     // Aramayı çevir (Baresip UA eşleşmesi için domain içeren tam SIP URI formatı kullanılır)
     const dialParam = hedefNumara.includes('@')
@@ -606,6 +639,8 @@ export class SipKoprusu {
   _temizle() {
     this.cagriAktif = false;
     this._aramaKilit = false;
+    clearTimeout(this._cagriZamanAsimi);
+    this._cagriZamanAsimi = null;
     clearTimeout(this.sesKanalGozcusu);
     this.sesKanalGozcusu = null;
     this.sesKanaliDurumu = 'dogrulanmadi';
