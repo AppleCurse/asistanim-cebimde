@@ -1,4 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
+export PATH="/data/data/com.termux/files/usr/bin:$PATH"
 set -x
 
 # 1. Servisleri durdur

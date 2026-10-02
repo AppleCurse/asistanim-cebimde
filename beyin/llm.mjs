@@ -326,6 +326,7 @@ export class LLMIstemci {
           headers: {
             'Authorization': `Bearer ${this.fishAudioApiKey}`,
             'Content-Type': 'application/json',
+            'model': 's2.1-pro-free',
           },
           body: JSON.stringify(govde),
           signal: AbortSignal.timeout(Math.min(this.zamanAsimi, 30_000)),
