@@ -3,6 +3,11 @@
 # Neden: tarayıcılar mikrofonu ve konuşma tanımayı sadece HTTPS (güvenli bağlam) altında açar.
 # Cebindeki telefonda ilk açılışta "güvenli değil" uyarısını bir kez geçmen gerekir.
 set -eu
+REPO_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/../.." && pwd)"
+if [[ -f "$REPO_DIR/.env" ]]; then
+  set -a; # shellcheck disable=SC1091
+  source "$REPO_DIR/.env"; set +a
+fi
 export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
 DIZIN="$ASISTAN_HOME/tls"; mkdir -p "$DIZIN"; chmod 700 "$DIZIN"
 IP="$(ip -4 addr show wlan0 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1 || true)"

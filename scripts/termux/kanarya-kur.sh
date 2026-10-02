@@ -1,7 +1,14 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Ses kanalı kanarya testi: her gece 03:00 çalışır; kırmızı sonucu SMS ile bildirir.
 set -u
+export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+export HOME="${TERMUX_HOME:-/data/data/com.termux/files/home}"
+export PATH="$PREFIX/bin:$PATH"
 REPO_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/../.." && pwd)"
+if [[ -f "$REPO_DIR/.env" ]]; then
+  set -a; # shellcheck disable=SC1091
+  source "$REPO_DIR/.env"; set +a
+fi
 ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
 mkdir -p "$ASISTAN_HOME/log"
 NUMARA="${KANARYA_SMS_NUMARA:-${1:-}}"

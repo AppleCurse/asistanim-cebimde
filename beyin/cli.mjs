@@ -6,7 +6,7 @@
 
 import readline from 'node:readline';
 import { ayarYukle, tokenAl, logOlustur } from '../ortak/ayar.mjs';
-import { LLMIstemci } from './llm.mjs';
+import { LLMIstemci, guvenliUrlGorunumu } from './llm.mjs';
 import { BedenIstemci } from './beden-istemci.mjs';
 import { Hafiza } from './hafiza.mjs';
 import { GorevYoneticisi } from './gorev.mjs';
@@ -50,7 +50,7 @@ if (tekSoru) {
 }
 
 const bd = await beden.saglik();
-console.log(`Beden: ${bd.durum}${bd.mod ? ' (' + bd.mod + ')' : ''} | LLM: ${llm.baseUrl}`);
+console.log(`Beden: ${bd.durum}${bd.mod ? ' (' + bd.mod + ')' : ''} | LLM: ${guvenliUrlGorunumu(llm.baseUrl)}`);
 console.log(`${ayar.kullanici.asistanAdi} hazır. Çıkmak için /cik, sohbeti sıfırlamak için /sifirla\n`);
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout, prompt: 'sen> ' });

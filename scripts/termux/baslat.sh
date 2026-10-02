@@ -3,6 +3,7 @@
 # Her servis servis.sh ile "ölürse yeniden doğar". Loglar: ~/.asistan/log/
 #   bash scripts/termux/baslat.sh            # hepsini başlat
 #   ENABLE_9REMOTE=1 bash scripts/termux/baslat.sh   # proot içindeki 9remote'u da (ilk eşleşmeyi önce elle yap!)
+#   ENABLE_9ROUTER=0 bash scripts/termux/baslat.sh  # LLM doğrudan bulut sağlayıcısına gidiyorsa
 set -u
 export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
 export HOME="${TERMUX_HOME:-/data/data/com.termux/files/home}"
@@ -34,11 +35,32 @@ termux-wake-lock 2>/dev/null || echo "  (termux-wake-lock yok — Termux:API kur
 
 echo "▶ Servisler"
 command -v sshd >/dev/null && { pgrep -x sshd >/dev/null || sshd; echo "  sshd (port 8022)"; }
-if [[ "${ENABLE_9ROUTER:-0}" == "1" ]] && [[ -f "$REPO_DIR/scripts/termux/9router-servis.sh" ]] && command -v 9router >/dev/null; then
-  baslat 9router bash "$REPO_DIR/scripts/termux/9router-servis.sh"
-else
-  echo "  9router atlandı (.env doğrudan OpenRouter/Groq kullanıyor)"
-fi
+routerBaslat() {
+  if [[ -f "$REPO_DIR/scripts/termux/9router-servis.sh" ]] && command -v 9router >/dev/null; then
+    baslat 9router bash "$REPO_DIR/scripts/termux/9router-servis.sh"
+  else
+    echo "  9router başlatılamadı (kurulu değil; önce scripts/termux/kur.sh çalıştır)"
+  fi
+}
+yerel9routerUrlMi() {
+  local url="${1%/}"
+  [[ "$url" == "http://127.0.0.1:20128/v1" || "$url" == "http://localhost:20128/v1" ]]
+}
+ENABLE_9ROUTER="${ENABLE_9ROUTER:-1}"
+case "$ENABLE_9ROUTER" in
+  1)
+    for url in "${LLM_BASE_URL:-http://127.0.0.1:20128/v1}" "${ARAMA_LLM_BASE_URL:-}"; do
+      [[ -z "$url" ]] && continue
+      if ! yerel9routerUrlMi "$url"; then
+        echo "  Hata: ENABLE_9ROUTER=1 ile yalnızca yerel 9router endpoint'i kullanılabilir; doğrudan/uzak endpoint için ENABLE_9ROUTER=0 ayarla." >&2
+        exit 1
+      fi
+    done
+    routerBaslat
+    ;;
+  0) echo "  9router atlandı (ENABLE_9ROUTER=0; doğrudan sağlayıcı ayarları kullanıcı tarafından yapılmalı)" ;;
+  *) echo "  ENABLE_9ROUTER yalnızca 0 veya 1 olabilir; 9router başlatılmadı" >&2; exit 1 ;;
+esac
 baslat beden node "$REPO_DIR/beden/server.mjs"
 baslat beyin  node "$REPO_DIR/beyin/index.mjs"
 if command -v proot-distro >/dev/null; then

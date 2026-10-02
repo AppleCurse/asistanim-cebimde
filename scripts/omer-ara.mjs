@@ -1,60 +1,100 @@
-// Ömer Bey'e sistem becerileri ve yetkileri brifingi veren otomatik arama başlatıcı
+// Ömer Bey için prototipin sınırlarını da açıkça anlatan görüşme görevi hazırlar.
+// Güvenli varsayılan: yalnızca görevi oluşturur; dış arama için --ara --onayla ve OMER_NUMARA gerekir.
 import fs from 'node:fs';
 import path from 'node:path';
+import http from 'node:http';
+import https from 'node:https';
 import { ASISTAN_HOME } from '../ortak/ayar.mjs';
 
 const homeDizini = process.env.ASISTAN_HOME || (fs.existsSync('/data/data/com.termux/files/home/.asistan') ? '/data/data/com.termux/files/home/.asistan' : ASISTAN_HOME);
-const GOREV_DIZINI = path.join(homeDizini, 'gorevler');
-const id = 'omer-brifing-' + Date.now().toString(36);
+const gorevDizini = path.join(homeDizini, 'gorevler');
+const tokenDosyasi = path.join(homeDizini, 'beyin.token');
+const token = process.env.BEYIN_TOKEN || (fs.existsSync(tokenDosyasi) ? fs.readFileSync(tokenDosyasi, 'utf8').trim() : '');
+if (!token) throw new Error(`Beyin tokenı bulunamadı: ${tokenDosyasi}`);
 
+const kisiAdi = process.env.OMER_ADI || 'Ömer Bey';
+const numara = process.env.OMER_NUMARA || '';
+const aramaIstendi = process.argv.includes('--ara');
+const aramaOnaylandi = process.argv.includes('--onayla');
+if (aramaIstendi && !aramaOnaylandi) throw new Error('Dış arama için açıkça --ara --onayla birlikte verilmelidir.');
+if (aramaIstendi && !/^\+?[0-9]{5,20}$/.test(numara)) throw new Error('Arama için OMER_NUMARA (+ ve rakamlar, 5–20 hane) ayarlanmalıdır.');
+if (!numara || !/^\+?[0-9]{5,20}$/.test(numara)) throw new Error('Görev için OMER_NUMARA (+ ve rakamlar, 5–20 hane) ayarlanmalıdır.');
+
+const id = 'omer-brifing-' + Date.now().toString(36);
 const gorev = {
   id,
   olusturuldu: new Date().toISOString(),
   kaynak: 'panel',
-  talimat: "Ömer Bey'i (05373351866) ara. Sistemin becerileri, yetkileri, neden var olduğu hakkında 1 dakikayı geçmeyen net bir brifing ver.",
+  talimat: `${kisiAdi}'i ara; prototipin kodda bulunan yeteneklerini ve saha doğrulama sınırlarını kısa ve dürüst biçimde anlat. Gerçek Android, SIP/RTP veya 7/24 başarı iddiasında bulunma.`,
   durum: 'hazir',
   mod: 'voip',
   transkript: [],
   sonuc: null,
-  baslik: "Ömer Bey'e Sistem Becerileri ve Yetkileri Brifingi",
-  amac: "Sistemin neden var olduğunu, yetkilerini, becerilerini ve sınırlarını 1 dakikayı aşmadan eksiksiz aktarmak.",
-  ton: "Net, profesyonel, saygılı, kendinden emin ve abartısız",
-  acilis: "Merhaba Ömer Bey! Ben Gümüş'ün yapay zekâ asistanı Aspasia. Sistemimizin yetkileri ve becerileri hakkında size 1 dakikayı geçmeyen kısa bir brifing vermek için aradım. Bu sistem, eski bir Android telefonu 7 gün 24 saat yaşayan kesintisiz bir kişisel asistana dönüştürüyor. Becerilerim arasında; şu an yaptığımız gibi bağımsız sesli telefon aramaları gerçekleştirmek, SMS yönetimi, kamera ile ortam ve belge analizi yaparak Cebimon üzerinden uygulamalı adımları doğrulamak ve planlama yapmak yer alıyor. Güvenlik ilkemiz gereği tüm kritik yetkiler kullanıcı onayına bağlıdır, abartılı vaatlerde bulunulmaz ve sınırların dışına çıkılmaz. Sistemle ilgili sormak istediğiniz bir detay var mı?",
+  baslik: 'Prototipin Becerileri ve Doğrulama Sınırları',
+  amac: 'Kaynakta bulunan yetenekleri ve henüz sahada doğrulanmamış noktaları abartısız açıklamak.',
+  ton: 'Net, profesyonel, saygılı ve ölçülü',
+  acilis: `Merhaba ${kisiAdi}, ben Asistanım Cebimde prototipinin dijital asistanıyım. Projede web paneli, LLM araç döngüsü ve Termux/baresip entegrasyon kodu bulunuyor. Ancak gerçek Android cihaz kurulumu, SIP/RTP ile çift yönlü arama ve 24 saat çalışma sahada doğrulanmadı; bu nedenle bunları çalışan veya garanti edilen özellikler olarak sunmuyorum. Kısa bir bilgilendirme için uygun musunuz?`,
   konusma_noktalari: [
-    "Neden var olduğu: Eski bir Android telefonu 7/24 yaşayan kişisel asistana dönüştürmek.",
-    "Beceriler: Sesli VoIP/GSM arama, SMS okuma/gönderme, kamera ile görme ve ortam analizi, Cebimon görev planlama ve doğrulama.",
-    "Yetkiler ve sınırlar: Kritik işlemler kullanıcı onayından geçer, abartılı vaat yok, yerel ve güvenli altyapı.",
-    "Muhatabın sorusu varsa kısa ve net yanıtla, yoksa teşekkür edip görüşmeyi tamamla."
+    'Projede bulunanlar: web paneli, araç kullanan LLM döngüsü, görev akışı ve Termux/baresip entegrasyon kodu.',
+    'Henüz doğrulanmayanlar: gerçek Android cihaz çevrimi, gerçek SIP/RTP ile çift yönlü görüşme ve 24 saat/7/24 dayanıklılık.',
+    'Otomatik testler mock/sahte sağlayıcı kullanır; saha başarısı veya üretim garantisi değildir.',
+    'Muhatabın sorusu varsa kısa yanıtla; doğrulanmayan özelliği çalışıyor diye sunma.'
   ],
   sinirlar: [
-    "1 dakikayı kesinlikle aşma.",
-    "Abartılı vaatlerde bulunma, sadece sistemin gerçek yetkilerini ve sınırlarını aktar.",
-    "Mali veya hukuki taahhüt verme."
+    'Bir dakikayı aşma.',
+    'Gerçek cihaz, gerçek SIP/RTP veya 7/24 başarı iddiasında bulunma.',
+    'Mali veya hukuki taahhüt verme.'
   ],
-  kisi: {
-    ad: "Ömer Bey",
-    numara: "05373351866",
-    iliski: "muhatap / ortak"
-  },
+  kisi: { ad: kisiAdi, numara, iliski: 'bilgilendirme muhatabı' },
   eksik_bilgi: [],
   guncellendi: new Date().toISOString()
 };
 
-fs.mkdirSync(GOREV_DIZINI, { recursive: true });
-fs.writeFileSync(path.join(GOREV_DIZINI, `${id}.json`), JSON.stringify(gorev, null, 2), 'utf8');
-console.log(`[GÖREV OLUŞTURULDU] ID: ${id}`);
+fs.mkdirSync(gorevDizini, { recursive: true });
+fs.writeFileSync(path.join(gorevDizini, `${id}.json`), JSON.stringify(gorev, null, 2), 'utf8');
+console.log(`[GÖREV HAZIR] ID: ${id}; hedef numara dosyaya yazıldı, günlüğe yazılmadı.`);
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-const token = 'b4305bb83725b8c00284cb9f409fbe8dea02c68820f3b2dc';
+if (!aramaIstendi) {
+  console.log('Otomatik arama yapılmadı. Panelde görevi inceleyip oradan onaylayabilirsiniz.');
+  process.exit(0);
+}
+
+const tlsDizini = path.join(homeDizini, 'tls');
+const certDosyasi = path.join(tlsDizini, 'cert.pem');
+const keyDosyasi = path.join(tlsDizini, 'key.pem');
+const tlsVar = fs.existsSync(certDosyasi) && fs.existsSync(keyDosyasi);
+const port = Number(process.env.BEYIN_PORT || 20131);
+const adres = new URL(`${tlsVar ? 'https' : 'http'}://127.0.0.1:${port}/api/gorevler/${id}/voip-ara`);
+const govde = JSON.stringify({ numara });
 
 try {
-  const yanit = await fetch(`https://127.0.0.1:20131/api/gorevler/${id}/voip-ara?token=${token}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ numara: '05373351866' }),
+  const veri = await new Promise((coz, reddet) => {
+    const istemci = tlsVar ? https : http;
+    const secenekler = {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(govde),
+      },
+      ...(tlsVar ? { ca: fs.readFileSync(certDosyasi) } : {}),
+    };
+    const istek = istemci.request(adres, secenekler, (yanit) => {
+      const parcalar = [];
+      yanit.on('data', (parca) => parcalar.push(parca));
+      yanit.on('end', () => {
+        const metin = Buffer.concat(parcalar).toString('utf8');
+        let sonuc;
+        try { sonuc = JSON.parse(metin); } catch { return reddet(new Error(`Geçersiz JSON yanıtı (HTTP ${yanit.statusCode})`)); }
+        if (yanit.statusCode < 200 || yanit.statusCode >= 300) return reddet(new Error(sonuc.hata || `HTTP ${yanit.statusCode}`));
+        coz(sonuc);
+      });
+    });
+    istek.on('error', reddet);
+    istek.end(govde);
   });
-  const veri = await yanit.json();
-  console.log('[ARAMA BAŞLATILDI]', JSON.stringify(veri, null, 2));
+  console.log('[ARAMA İSTEĞİ GÖNDERİLDİ]', JSON.stringify({ gorevId: id, sesKanali: veri.sesKanali || 'doğrulanmadı' }));
+  console.log('Bu yanıt gerçek SIP/RTP veya çift yönlü ses başarısını kanıtlamaz.');
 } catch (e) {
   console.error('[ARAMA HATA]', e.message);
 }

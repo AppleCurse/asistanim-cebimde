@@ -12,12 +12,50 @@
     <div class="kart">
       <p style="text-align:center"><img src="/statik/ikon-192.png" alt="" width="96" height="96" style="border-radius:22px" /></p>
       <h2>Giriş</h2>
-      <p class="soluk">Erişim anahtarı eski telefondaki <code>~/.asistan/beyin.token</code> dosyasında; <code>scripts/termux/baslat.sh</code> çıktısında da yazar.</p>
-      <form onsubmit="event.preventDefault(); location.href = '/?token=' + encodeURIComponent(document.getElementById('t').value.trim());">
-        <input id="t" placeholder="token" autocomplete="off" autofocus />
+      <p class="soluk">Erişim anahtarı eski telefondaki <code>~/.asistan/beyin.token</code> dosyasındadır. Anahtarı panel adresine eklemeyin.</p>
+      <noscript><p class="soluk" role="alert">Güvenli giriş için JavaScript'i etkinleştirin.</p></noscript>
+      <form id="girisFormu" method="post" action="/api/giris">
+        <label for="t">Erişim anahtarı</label>
+        <input id="t" name="token" type="password" placeholder="Erişim anahtarı" autocomplete="off" autofocus required />
+        <p id="girisHata" class="soluk" role="alert" hidden></p>
         <p><button class="buton birincil" type="submit">Bağlan</button></p>
       </form>
     </div>
   </div>
+  <script>
+    const form = document.getElementById('girisFormu');
+    const alan = document.getElementById('t');
+    const hata = document.getElementById('girisHata');
+    const dugme = form.querySelector('button[type="submit"]');
+    const adres = new URL(window.location.href);
+    adres.searchParams.delete('token');
+    const hedef = (adres.pathname === '/giris' ? '/' : adres.pathname) + adres.search + adres.hash;
+    history.replaceState(null, '', hedef);
+
+    async function giris(token) {
+      hata.hidden = true;
+      dugme.disabled = true;
+      try {
+        const yanit = await fetch('/api/giris', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        if (!yanit.ok) throw new Error('Erişim anahtarı geçersiz. ~/.asistan/beyin.token dosyasını kontrol edin.');
+        location.replace(hedef || '/');
+      } catch (e) {
+        hata.textContent = e.message || 'Giriş başarısız.';
+        hata.hidden = false;
+        dugme.disabled = false;
+        alan.focus();
+      }
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      giris(alan.value.trim());
+    });
+  </script>
 </body>
 </html>

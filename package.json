@@ -1,7 +1,7 @@
 {
   "name": "asistanim-cebimde",
   "version": "0.1.0",
-  "description": "Eski bir Android telefonu 7/24 yaşayan; gören, duyan, konuşan ve arayan kişisel asistana dönüştüren proje.",
+  "description": "Eski Android telefonlar için kişisel asistan prototipi; gerçek cihaz, SIP/RTP ve 7/24 doğrulaması bekleniyor.",
   "type": "module",
   "private": true,
   "engines": {

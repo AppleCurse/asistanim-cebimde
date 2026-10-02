@@ -1,5 +1,5 @@
 // BEYİN — ajan + web paneli + telefon köprüsü sunucusu.
-// Cebindeki telefondan http://<eski-telefon-ip>:20131/?token=... ile açılır.
+// Cebindeki telefondan http://<eski-telefon-ip>:20131/ adresinde açılır; giriş anahtarı POST ile verilir.
 
 import http from 'node:http';
 import https from 'node:https';
@@ -9,7 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ayarYukle, tokenAl, logOlustur, ASISTAN_HOME } from '../ortak/ayar.mjs';
-import { LLMIstemci } from './llm.mjs';
+import { LLMIstemci, guvenliUrlGorunumu } from './llm.mjs';
 import { BedenIstemci } from './beden-istemci.mjs';
 import { Hafiza } from './hafiza.mjs';
 import { GorevYoneticisi } from './gorev.mjs';
@@ -103,7 +103,6 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
         groqApiKey: ayar.beyin.llm.groqApiKey,
         openrouterApiKey: ayar.beyin.llm.openrouterApiKey,
         cerebrasApiKey: ayar.beyin.llm.cerebrasApiKey,
-        tavilyApiKey: ayar.beyin.llm.tavilyApiKey,
         elevenlabsApiKey: ayar.beyin.llm.elevenlabsApiKey,
         elevenlabsVoiceId: ayar.beyin.llm.elevenlabsVoiceId,
         elevenlabsModel: ayar.beyin.llm.elevenlabsModel,
@@ -116,9 +115,9 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
   const asistan = new Asistan({ llm, beden, ayar, hafiza, gorevler, cebimon, log });
   const sipKoprusu = new SipKoprusu({ llm: aramaLlm, gorevler, ayar, log });
 
-  const yetkiliMi = (req, url) => {
+  const yetkiliMi = (req) => {
     const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    return tokenEslesir(bearer, token) || tokenEslesir(url.searchParams.get('token'), token) || tokenEslesir(cerezler(req).asistan_token, token);
+    return tokenEslesir(bearer, token) || tokenEslesir(cerezler(req).asistan_token, token);
   };
 
   async function api(req, res, url) {
@@ -135,8 +134,17 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
         kullanici: ayar.kullanici.ad,
         calismaSuresi: Math.round((Date.now() - BASLANGIC) / 1000),
         beden: { ...bedenDurum, yetenekler },
-        llm: { baseUrl: llm.baseUrl, model: llm.model || '(otomatik)', stt: ayar.beyin.stt, tts: ayar.beyin.tts },
-        arama: ayar.arama,
+        llm: { baseUrl: guvenliUrlGorunumu(llm.baseUrl), model: llm.model || '(otomatik)', stt: ayar.beyin.stt, tts: ayar.beyin.tts },
+        arama: {
+          varsayilanMod: ayar.arama?.varsayilanMod,
+          aiOlduguSoylensin: ayar.arama?.aiOlduguSoylensin,
+          maksSure: ayar.arama?.maksSure,
+          llm: {
+            baseUrl: guvenliUrlGorunumu(aramaLlm.baseUrl),
+            model: aramaLlm.model || '(otomatik)',
+            apiKeyConfigured: Boolean(aramaApiKey),
+          },
+        },
         ag: agAdresleri(),
         bellek: { rssMB: Math.round(process.memoryUsage().rss / 1048576), bosMB: Math.round(os.freemem() / 1048576) },
       };
@@ -263,23 +271,51 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
     ? { cert: fs.readFileSync(path.join(tlsDizini, 'cert.pem')), key: fs.readFileSync(path.join(tlsDizini, 'key.pem')) }
     : null;
 
+  const oturumCerezi = () => {
+    const guvenli = tls || process.env.COOKIE_SECURE === '1';
+    return `asistan_token=${encodeURIComponent(token)}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax${guvenli ? '; Secure' : ''}`;
+  };
   const istekIsleyici = async (req, res) => {
     const url = new URL(req.url, 'http://beyin');
+    res.setHeader('Referrer-Policy', 'no-referrer');
     try {
       if (url.pathname === '/saglik') return jsonYanit(res, 200, { durum: 'yasiyor', calismaSuresi: Math.round((Date.now() - BASLANGIC) / 1000) });
 
-      const yetkili = yetkiliMi(req, url);
+      // Tarayıcı tokenini yalnızca POST gövdesinden al; URL/localStorage'a koyma.
+      if (url.pathname === '/api/giris' && req.method === 'POST') {
+        res.setHeader('Cache-Control', 'no-store');
+        const govde = await govdeOku(req, 4096);
+        if (!tokenEslesir(govde.token, token)) {
+          return jsonYanit(res, 401, { hata: 'erişim anahtarı geçersiz' });
+        }
+        res.writeHead(204, { 'Set-Cookie': oturumCerezi() });
+        return res.end();
+      }
+
+      const yetkili = yetkiliMi(req);
       const sayfa = { '/': 'index.html', '/telefon': 'telefon.html', '/giris': 'giris.html' }[url.pathname];
       if (sayfa) {
-        if (!yetkili) return statik(res, 'giris.html');
-        const ek = url.searchParams.get('token') === token ? { 'Set-Cookie': `asistan_token=${encodeURIComponent(token)}; Path=/; Max-Age=31536000; SameSite=Lax` } : {};
-        return statik(res, sayfa, ek);
+        if (!yetkili) return statik(res, 'giris.html', { 'Cache-Control': 'no-store' });
+        // Eski bağlantılarda kalan token query'sini, yetkili çerez varsa hemen URL'den çıkar.
+        if (url.searchParams.has('token')) {
+          const temizParametreler = new URLSearchParams(url.searchParams);
+          temizParametreler.delete('token');
+          const sorgu = temizParametreler.toString();
+          res.writeHead(303, {
+            Location: `${url.pathname}${sorgu ? `?${sorgu}` : ''}`,
+            'Set-Cookie': oturumCerezi(),
+            'Cache-Control': 'no-store',
+          });
+          return res.end();
+        }
+        // Oturum çerezi taşıyan HTML yanıtını önbelleğe koyma; eski çerez de HttpOnly olarak yenilenir.
+        return statik(res, sayfa, { 'Set-Cookie': oturumCerezi(), 'Cache-Control': 'no-store' });
       }
       if (url.pathname.startsWith('/statik/')) return statik(res, url.pathname.slice('/statik/'.length));
       if (url.pathname === '/sw.js' || url.pathname === '/manifest.webmanifest') return statik(res, url.pathname.slice(1)); // PWA: kök kapsam
 
       if (url.pathname.startsWith('/api/')) {
-        if (!yetkili) return jsonYanit(res, 401, { hata: 'yetkisiz — ?token=... veya Authorization: Bearer' });
+        if (!yetkili) return jsonYanit(res, 401, { hata: 'yetkisiz — giriş çerezi veya Authorization: Bearer gerekli' });
         const sonuc = await api(req, res, url);
         return jsonYanit(res, 200, sonuc);
       }
@@ -300,11 +336,12 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
   sunucu.listen(dinlePort, dinleHost, async () => {
     const p = sunucu.address().port;
     log.bilgi(`Beyin ayakta → ${sema}://${dinleHost}:${p}${tls ? ' (TLS: ~/.asistan/tls)' : ''}`);
-    for (const a of agAdresleri()) log.bilgi(`  Panel: ${sema}://${a.ip}:${p}/?token=${token}  (${a.arayuz})`);
+    for (const a of agAdresleri()) log.bilgi(`  Panel: ${sema}://${a.ip}:${p}/  (${a.arayuz})`);
+    log.bilgi(`  Giriş anahtarı dosyası: ${path.join(ASISTAN_HOME, 'beyin.token')}`);
     const bd = await beden.saglik();
     log.bilgi(`Beden: ${bd.durum}${bd.mod ? ' (' + bd.mod + ')' : ''}`);
     try {
-      log.bilgi(`LLM modeli: ${await llm.modelSagla()} @ ${llm.baseUrl}`);
+      log.bilgi(`LLM modeli: ${await llm.modelSagla()} @ ${guvenliUrlGorunumu(llm.baseUrl)}`);
     } catch (hata) {
       log.uyari(`LLM hazır değil: ${hata.message} — 9router çalışıyor mu? LLM_API_KEY doğru mu?`);
     }

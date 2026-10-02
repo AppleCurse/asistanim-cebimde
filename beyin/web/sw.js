@@ -1,6 +1,6 @@
 // Servis çalışanı: paneli "ana ekrana kurulabilir" yapar ve statik dosyaları önbelleğe alır.
 // API ve WebSocket trafiğine dokunmaz (her zaman ağ).
-const ONBELLEK = 'asistan-v1';
+const ONBELLEK = 'asistan-v2';
 const STATIK = ['/statik/stil.css', '/statik/panel.js', '/statik/telefon.js', '/statik/ikon-180.png', '/statik/ikon-192.png', '/statik/ikon-512.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
@@ -16,6 +16,11 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (url.searchParams.has('token')) {
+    // Eski tokenli bağlantıları ağa yönlendir ama hiçbir önbelleğe yazma.
+    e.respondWith(fetch(e.request));
+    return;
+  }
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws/') || url.pathname === '/saglik') return;
   // Ağ öncelikli; ağ yoksa önbellekten (panel kabuğu çevrimdışı da açılsın, "beden ulaşılamıyor" desin)
   e.respondWith(

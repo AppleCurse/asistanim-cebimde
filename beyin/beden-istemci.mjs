@@ -1,4 +1,5 @@
 // Beyin → Beden HTTP istemcisi.
+import { guvenliUrlGorunumu } from './llm.mjs';
 
 export class BedenHatasi extends Error {
   constructor(mesaj, durum) {
@@ -24,7 +25,8 @@ export class BedenIstemci {
         signal: AbortSignal.timeout(this.zamanAsimi),
       });
     } catch (hata) {
-      throw new BedenHatasi(`Bedene ulaşılamadı (${this.url}): ${hata.message}`, 0);
+      const kod = hata?.cause?.code || hata?.code;
+      throw new BedenHatasi(`Bedene ulaşılamadı (${guvenliUrlGorunumu(this.url)})${kod ? ` [${kod}]` : ''}`, 0);
     }
     const veri = await yanit.json().catch(() => ({}));
     if (!yanit.ok || veri.tamam === false) throw new BedenHatasi(veri.hata || `beden ${yanit.status}`, yanit.status);
@@ -43,8 +45,8 @@ export class BedenIstemci {
     try {
       const y = await fetch(this.url + '/saglik', { signal: AbortSignal.timeout(3000) });
       return await y.json();
-    } catch (hata) {
-      return { durum: 'ulasilamiyor', hata: hata.message };
+    } catch {
+      return { durum: 'ulasilamiyor', hata: 'beden sağlık kontrolü başarısız' };
     }
   }
 

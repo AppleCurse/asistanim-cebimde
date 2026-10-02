@@ -6,6 +6,7 @@ node_modules/
 .env.*
 !.env.example
 *.token
+*.initial-password
 
 # Çalışma zamanı verileri (asıl konum ~/.asistan, repo içine düşerse de ignore)
 .asistan/

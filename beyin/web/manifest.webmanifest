@@ -1,7 +1,7 @@
 {
   "name": "Asistanım Cebimde",
   "short_name": "Asistan",
-  "description": "Eski telefonda 7/24 yaşayan kişisel asistanın kumandası",
+  "description": "Eski telefonda çalışması hedeflenen kişisel asistan prototipinin web paneli",
   "lang": "tr",
   "start_url": "/",
   "scope": "/",

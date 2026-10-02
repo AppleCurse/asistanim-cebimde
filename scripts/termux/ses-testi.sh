@@ -19,8 +19,13 @@ export HOME="${TERMUX_HOME:-/data/data/com.termux/files/home}"
 export PATH="/data/data/com.termux/files/usr/bin:$PREFIX/bin:$PATH"
 unset LD_PRELOAD
 
-export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
 REPO_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/../.." && pwd)"
+if [[ -f "$REPO_DIR/.env" ]]; then
+  set -a; # shellcheck disable=SC1091
+  source "$REPO_DIR/.env"; set +a
+fi
+export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
+RUN="$ASISTAN_HOME/run"
 ROOTFS_TMP="/data/data/com.termux/files/usr/var/lib/proot-distro/containers/ubuntu/rootfs/tmp"
 [[ -d "$ROOTFS_TMP" ]] || ROOTFS_TMP="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/ubuntu/tmp"
 [[ -d "$ROOTFS_TMP" ]] || ROOTFS_TMP="/tmp"

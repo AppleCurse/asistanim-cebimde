@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LLMIstemci } from '../beyin/llm.mjs';
+import { LLMIstemci, guvenliUrlGorunumu } from '../beyin/llm.mjs';
+
+test('URL durum/günlük gösterimi kimlik bilgisi ve query sırlarını temizler', () => {
+  assert.equal(guvenliUrlGorunumu('https://kullanici:sifre@example.test/v1?token=secret#parca'), 'https://example.test/v1');
+});
 
 test('LLMIstemci: ElevenLabs yapılandırması varsayılanları doğru yükler', () => {
   const istemci = new LLMIstemci({
@@ -138,5 +142,75 @@ test('LLMIstemci.seslendir: ElevenLabs başarısız olduğunda yedek motora dü�
     }
   } finally {
     globalThis.fetch = orijinalFetch;
+  }
+});
+
+test('LLMIstemci: sağlayıcı hata gövdesi mesaj/log çıktısına eklenmez', async () => {
+  const oncekiEnable = process.env.ENABLE_9ROUTER;
+  const oncekiFetch = globalThis.fetch;
+  try {
+    process.env.ENABLE_9ROUTER = '0';
+    globalThis.fetch = async () => ({ ok: false, status: 401, text: async () => 'api-key-secret query-secret' });
+    const istemci = new LLMIstemci({ baseUrl: 'https://provider.example/v1', apiKey: 'api-key-secret' });
+    const hata = await istemci.modeller().catch((e) => e);
+    assert.match(hata.message, /401/);
+    assert.doesNotMatch(hata.message, /api-key-secret|query-secret/);
+    assert.doesNotMatch(JSON.stringify(hata), /api-key-secret|query-secret/);
+  } finally {
+    globalThis.fetch = oncekiFetch;
+    if (oncekiEnable === undefined) delete process.env.ENABLE_9ROUTER;
+    else process.env.ENABLE_9ROUTER = oncekiEnable;
+  }
+});
+
+test('LLMIstemci: doğrudan/uzak endpoint açık ENABLE_9ROUTER=0 olmadan reddedilir', () => {
+  const onceki = process.env.ENABLE_9ROUTER;
+  try {
+    process.env.ENABLE_9ROUTER = '1';
+    assert.throws(
+      () => new LLMIstemci({ baseUrl: 'https://api.groq.com/openai/v1', apiKey: 'gsk-test' }),
+      /ENABLE_9ROUTER=0/,
+    );
+    process.env.ENABLE_9ROUTER = '0';
+    assert.doesNotThrow(() => new LLMIstemci({ baseUrl: 'https://api.groq.com/openai/v1', apiKey: 'gsk-test' }));
+  } finally {
+    if (onceki === undefined) delete process.env.ENABLE_9ROUTER;
+    else process.env.ENABLE_9ROUTER = onceki;
+  }
+});
+
+test('LLMIstemci: 9router etkin iken sohbet/STT yedekleri doğrudan sağlayıcıya çıkmaz', async () => {
+  const oncekiEnable = process.env.ENABLE_9ROUTER;
+  const oncekiFetch = globalThis.fetch;
+  const cagrilar = [];
+  try {
+    process.env.ENABLE_9ROUTER = '1';
+    globalThis.fetch = async (url) => {
+      cagrilar.push(String(url));
+      if (String(url).endsWith('/audio/transcriptions')) {
+        return { ok: true, status: 200, json: async () => ({ text: 'test transkript' }) };
+      }
+      return { ok: false, status: 503, text: async () => 'test hata' };
+    };
+
+    const istemci = new LLMIstemci({
+      baseUrl: 'http://127.0.0.1:20128/v1',
+      apiKey: 'yerel-test',
+      model: 'test-model',
+      groqApiKey: 'gsk-test',
+      openrouterApiKey: 'sk-or-test',
+    });
+    await assert.rejects(istemci.sohbet([{ role: 'user', content: 'test' }]), /503/);
+    const metin = await istemci.yaziyaCevir(Buffer.from('sahte ses'), { mime: 'audio/wav' });
+    assert.equal(metin, 'test transkript');
+    assert.equal(cagrilar.length, 2);
+    assert.deepEqual(cagrilar, [
+      'http://127.0.0.1:20128/v1/chat/completions',
+      'http://127.0.0.1:20128/v1/audio/transcriptions',
+    ]);
+  } finally {
+    globalThis.fetch = oncekiFetch;
+    if (oncekiEnable === undefined) delete process.env.ENABLE_9ROUTER;
+    else process.env.ENABLE_9ROUTER = oncekiEnable;
   }
 });

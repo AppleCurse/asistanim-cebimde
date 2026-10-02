@@ -17,6 +17,11 @@ if [[ "${PREFIX:-}" != *com.termux* ]]; then
 fi
 
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+if [[ -f "$REPO_DIR/.env" ]]; then
+  chmod 600 "$REPO_DIR/.env" 2>/dev/null || true
+  set -a; # shellcheck disable=SC1091
+  source "$REPO_DIR/.env"; set +a
+fi
 ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
 PROOT=0; TLS=0
 for a in "$@"; do
@@ -74,12 +79,14 @@ cat <<EOF
 1) Telefonda kurulu olması gerekenler (F-Droid, Play Store sürümleriyle KARIŞTIRMA):
    - Termux:API   → kamera, mikrofon, telefon, SMS, bildirim
    - Termux:Boot  → telefon açılınca asistanın kendiliğinden kalkması
-   Android Ayarlar → Uygulamalar → Termux / Termux:API → İzinler: Kamera, Mikrofon, Telefon, SMS, Kişiler, Konum ver.
+   Android Ayarlar → Uygulamalar → Termux / Termux:API → yalnızca kullanacağın işlevlerin OS izinlerini ver.
+   OS izni, uygulamadaki ayrı config.json yetenek kapısını açmaz; telefon/SMS/konum/kişiler/kabuk kapıları ayrıca bilinçli açılmadıkça kapalı kalır.
    MIUI: Pil tasarrufu → Termux için "Kısıtlama yok" + "Otomatik başlat" aç. Geliştirici seçenekleri → "MIUI optimizasyonu" kapat (isteğe bağlı).
 
-2) 9router'ı başlat ve bir sağlayıcı bağla:
-     9router            # panel: http://localhost:20128  (telefonun tarayıcısında aç)
-   Providers → ücretsiz bir sağlayıcı bağla (OpenCode Free / Kiro) veya kendi API anahtarını gir.
+2) Güvenli ilk parolayla 9router'ı başlat ve bir sağlayıcı bağla:
+     bash $REPO_DIR/scripts/termux/9router-servis.sh  # ön planda; durdurmak için Ctrl+C
+   İlk parola "$ASISTAN_HOME/9router.initial-password" dosyasına 0600 izinle kaydedilir; başka Termux oturumundan şu komutla oku: cat "$ASISTAN_HOME/9router.initial-password".
+   Tarayıcıda http://localhost:20128 → Providers → ücretsiz bir sağlayıcı bağla (OpenCode Free / Kiro) veya kendi API anahtarını gir.
    Dashboard'daki API key'i ve model adını $REPO_DIR/.env içine yaz: LLM_API_KEY=..., LLM_MODEL=...
 
 3) Hepsini ayağa kaldır:

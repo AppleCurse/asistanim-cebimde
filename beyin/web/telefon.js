@@ -6,12 +6,8 @@ const $ = (s) => document.querySelector(s);
 const guvenli = window.isSecureContext;
 const Tanima = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-// URL'den veya localStorage'dan token al ve sakla
-const urlToken = new URLSearchParams(window.location.search).get('token');
-if (urlToken) {
-  try { localStorage.setItem('asistan_token', urlToken); } catch {}
-}
-const aktifToken = urlToken || (() => { try { return localStorage.getItem('asistan_token'); } catch { return null; } })() || '';
+// Eski sürümde localStorage'a yazılmış tokenı temizle; yeni oturum HttpOnly çerezle yönetilir.
+try { localStorage.removeItem('asistan_token'); } catch {}
 
 let ws = null;
 let mod = 'tarayici-ses';
@@ -182,8 +178,8 @@ function gonder(nesne) {
 
 function baglan(gorevId) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const tokenQuery = aktifToken ? `?token=${encodeURIComponent(aktifToken)}` : '';
-  ws = new WebSocket(`${proto}://${location.host}/ws/telefon${tokenQuery}`);
+  // Aynı kaynaklı WebSocket el sıkışmasında HttpOnly oturum çerezi otomatik gönderilir.
+  ws = new WebSocket(`${proto}://${location.host}/ws/telefon`);
   ws.binaryType = 'arraybuffer';
   ws.onopen = () => {
     gonder({ tip: 'baslat', gorevId: gorevId || undefined, mod });
@@ -261,9 +257,7 @@ function gorusmeBitti(sebep, m = {}) {
 // ---------- UI ----------
 async function gorevleriDoldur() {
   try {
-    const tokenQuery = aktifToken ? `?token=${encodeURIComponent(aktifToken)}` : '';
-    const basliklar = aktifToken ? { 'Authorization': `Bearer ${aktifToken}` } : {};
-    const y = await fetch(`/api/gorevler${tokenQuery}`, { headers: basliklar });
+    const y = await fetch('/api/gorevler', { credentials: 'same-origin' });
     const { gorevler } = await y.json();
     const sec = $('#gorev');
     for (const g of gorevler.filter((g) => ['hazir', 'taslak', 'araniyor'].includes(g.durum))) {

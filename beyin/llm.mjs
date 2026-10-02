@@ -5,11 +5,34 @@ import os from 'node:os';
 import path from 'node:path';
 import { Telemetri } from '../ortak/telemetri.mjs';
 
+export function guvenliUrlGorunumu(adres) {
+  try {
+    const url = new URL(adres);
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return '(geçersiz URL)';
+  }
+}
+
+function yerel9routerMi(adres) {
+  try {
+    const url = new URL(adres);
+    const localhost = ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(url.hostname);
+    return url.protocol === 'http:' && localhost && url.port === '20128' && url.pathname.replace(/\/+$/, '') === '/v1';
+  } catch {
+    return false;
+  }
+}
+
 export class LLMHatasi extends Error {
   constructor(mesaj, { durum, govde } = {}) {
     super(mesaj);
     this.durum = durum;
-    this.govde = govde;
+    Object.defineProperty(this, 'govde', { value: govde, enumerable: false });
   }
 }
 
@@ -30,13 +53,11 @@ export class LLMIstemci {
     openrouterApiKey,
     groqApiKey,
     cerebrasApiKey,
-    tavilyApiKey,
     telemetry,
   } = {}) {
     this.openrouterApiKey = openrouterApiKey || process.env.OPENROUTER_API_KEY || '';
     this.groqApiKey = groqApiKey || process.env.GROQ_API_KEY || '';
     this.cerebrasApiKey = cerebrasApiKey || process.env.CEREBRAS_API_KEY || '';
-    this.tavilyApiKey = tavilyApiKey || process.env.TAVILY_API_KEY || '';
     this.elevenlabsApiKey = elevenlabsApiKey || process.env.ELEVENLABS_API_KEY || '';
     this.elevenlabsVoiceId = elevenlabsVoiceId || process.env.ELEVENLABS_VOICE_ID || 'cgSgspJ2msm6clMCkdW9';
     this.elevenlabsModel = elevenlabsModel || process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
@@ -44,6 +65,9 @@ export class LLMIstemci {
 
     this.apiKey = apiKey || process.env.LLM_API_KEY || this.openrouterApiKey || '';
     this.baseUrl = (baseUrl || process.env.LLM_BASE_URL || (this.apiKey.startsWith('sk-or-') ? 'https://openrouter.ai/api/v1' : 'http://127.0.0.1:20128/v1')).replace(/\/+$/, '');
+    if (process.env.ENABLE_9ROUTER !== '0' && !yerel9routerMi(this.baseUrl)) {
+      throw new LLMHatasi(`Doğrudan/uzak LLM endpoint'i için ENABLE_9ROUTER=0 açıkça ayarlanmalı (${guvenliUrlGorunumu(this.baseUrl)})`);
+    }
     this.model = model || process.env.LLM_MODEL || (this.apiKey.startsWith('sk-or-') ? 'meta-llama/llama-3.3-70b-instruct' : '');
     this.sicaklik = sicaklik;
     this.sttModel = sttModel || process.env.STT_MODEL || 'whisper-large-v3-turbo';
@@ -73,11 +97,12 @@ export class LLMIstemci {
     try {
       yanit = await fetch(this.baseUrl + yol, { ...secenekler, headers: this._basliklar(secenekler.headers), signal: AbortSignal.timeout(this.zamanAsimi) });
     } catch (hata) {
-      throw new LLMHatasi(`LLM ulaşılamadı (${this.baseUrl}): ${hata.message}`);
+      const kod = hata?.cause?.code || hata?.code;
+      throw new LLMHatasi(`LLM ulaşılamadı (${guvenliUrlGorunumu(this.baseUrl)})${kod ? ` [${kod}]` : ''}`);
     }
     if (!yanit.ok) {
       const govde = await yanit.text().catch(() => '');
-      throw new LLMHatasi(`LLM isteği başarısız (${yanit.status}) ${yol}: ${govde.slice(0, 400)}`, { durum: yanit.status, govde });
+      throw new LLMHatasi(`LLM isteği başarısız (${yanit.status}) ${yol}`, { durum: yanit.status, govde });
     }
     return yanit;
   }
@@ -105,7 +130,7 @@ export class LLMIstemci {
     } catch {
       // 9router yanıt vermezse
     }
-    if (this.openrouterApiKey) {
+    if (this.openrouterApiKey && process.env.ENABLE_9ROUTER === '0') {
       this.model = 'meta-llama/llama-3.3-70b-instruct';
       return this.model;
     }
@@ -140,6 +165,7 @@ export class LLMIstemci {
     }
 
     let yanit;
+    const dogrudanSaglayiciAcik = process.env.ENABLE_9ROUTER === '0';
     try {
       yanit = await this._istek('/chat/completions', {
         method: 'POST',
@@ -147,8 +173,8 @@ export class LLMIstemci {
         body: JSON.stringify(govde),
       });
     } catch (hata) {
-      const affordMatch = hata.message?.match(/can only afford (\d+)/i);
-      if (affordMatch && this.groqApiKey && !this.baseUrl.includes('groq.com')) {
+      const affordMatch = String(hata.govde || hata.message || '').match(/can only afford (\d+)/i);
+      if (affordMatch && dogrudanSaglayiciAcik && this.groqApiKey && !this.baseUrl.includes('groq.com')) {
         console.log('[LLM] OpenRouter kredi kısıtı tespit edildi, Groq yedeğine geçiliyor (llama-3.3-70b-versatile)');
         const yedekIstemci = new LLMIstemci({
           baseUrl: 'https://api.groq.com/openai/v1',
@@ -172,7 +198,7 @@ export class LLMIstemci {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(govde),
         });
-      } else if (this.groqApiKey && !this.baseUrl.includes('groq.com')) {
+      } else if (dogrudanSaglayiciAcik && this.groqApiKey && !this.baseUrl.includes('groq.com')) {
         console.log('[LLM] Sağlayıcı hatası, Groq yedeğine geçiliyor (llama-3.3-70b-versatile)');
         const yedekIstemci = new LLMIstemci({
           baseUrl: 'https://api.groq.com/openai/v1',
@@ -187,7 +213,7 @@ export class LLMIstemci {
           telemetry: this.telemetri,
         });
         return yedekIstemci.sohbet(mesajlar, { araclar, model: 'llama-3.3-70b-versatile', sicaklik, maksToken });
-      } else if (this.openrouterApiKey && !this.baseUrl.includes('openrouter.ai')) {
+      } else if (dogrudanSaglayiciAcik && this.openrouterApiKey && !this.baseUrl.includes('openrouter.ai')) {
         console.log('[LLM] 9router başarısız, OpenRouter yedeğine geçiliyor (meta-llama/llama-3.3-70b-instruct)');
         const yedekIstemci = new LLMIstemci({
           baseUrl: 'https://openrouter.ai/api/v1',
@@ -223,7 +249,9 @@ export class LLMIstemci {
 
   /** Ses → metin. `ses` Buffer; `mime` örn. audio/webm, audio/mp4, audio/wav */
   async yaziyaCevir(ses, { mime = 'audio/wav', dil = 'tr', model, dosyaAdi } = {}) {
-    const groqKey = this.groqApiKey || (this.apiKey.startsWith('gsk_') ? this.apiKey : '');
+    const groqKey = process.env.ENABLE_9ROUTER === '0'
+      ? (this.groqApiKey || (this.apiKey.startsWith('gsk_') ? this.apiKey : ''))
+      : '';
     if (groqKey) {
       try {
         const form = new FormData();
@@ -300,10 +328,7 @@ export class LLMIstemci {
           }),
           signal: AbortSignal.timeout(Math.min(this.zamanAsimi, 30_000)),
         });
-        if (!y.ok) {
-          const hataGovde = await y.text().catch(() => '');
-          throw new Error(`ElevenLabs HTTP ${y.status}: ${hataGovde.slice(0, 200)}`);
-        }
+        if (!y.ok) throw new Error(`ElevenLabs HTTP ${y.status}`);
         const sesBuffer = Buffer.from(await y.arrayBuffer());
         if (sesBuffer && sesBuffer.length > 0) {
           this.telemetri?.yaz('tts', { motor: 'elevenlabs', karakter: metin.length });

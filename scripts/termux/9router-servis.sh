@@ -5,6 +5,15 @@ export HOME="${HOME:-/data/data/com.termux/files/home}"
 export PATH="$PREFIX/bin:$PATH"
 export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [[ -f "$REPO_DIR/.env" ]]; then
+  chmod 600 "$REPO_DIR/.env" 2>/dev/null || true
+  set -a
+  source "$REPO_DIR/.env"
+  set +a
+fi
+
 ROUTER_DIR="$PREFIX/lib/node_modules/9router/app"
 SERVER_JS="$ROUTER_DIR/custom-server.js"
 [[ -f "$SERVER_JS" ]] || SERVER_JS="$ROUTER_DIR/server.js"
@@ -16,6 +25,12 @@ fi
 
 export PORT="${ROUTER_PORT:-20128}"
 export HOSTNAME="0.0.0.0"
-export INITIAL_PASSWORD="${INITIAL_PASSWORD:-asistan123}"
+export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
+umask 077
+INITIAL_PASSWORD="$(node "$SCRIPT_DIR/9router-password.mjs")" || {
+  echo "9router başlangıç parolası hazırlanamadı." >&2
+  exit 1
+}
+export INITIAL_PASSWORD
 cd "$ROUTER_DIR"
 exec node --max-old-space-size=512 "$SERVER_JS"

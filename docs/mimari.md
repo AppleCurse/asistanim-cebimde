@@ -16,9 +16,9 @@ Katman 2 — proot Ubuntu (glibc)          → 9REMOTE (native modüller), ağı
 
 | Bileşen | Port | Dinler | Kimlik doğrulama | Kaynak |
 |---|---|---|---|---|
-| 9router | 20128 | 127.0.0.1 | 9router API key | npm `9router` |
+| 9router | 20128 | `0.0.0.0` yapılandırılır; gerçek ağ erişimi doğrulanmadı | 9router API key | npm `9router` + `scripts/termux/9router-servis.sh` |
 | Beden | 20130 | 127.0.0.1 | `Authorization: Bearer <beden.token>` | `beden/server.mjs` |
-| Beyin | 20131 | 0.0.0.0 | `?token=` → çerez, veya Bearer `<beyin.token>` | `beyin/index.mjs` |
+| Beyin | 20131 | 0.0.0.0 | POST `/api/giris` → HttpOnly çerez, veya Bearer `<beyin.token>` | `beyin/index.mjs` |
 | sshd | 8022 | 0.0.0.0 | Termux şifresi / anahtar | Termux `openssh` |
 | 9remote | relay + P2P | — | split-key + fiziksel Approve | npm `9remote` (proot) |
 
@@ -29,6 +29,7 @@ Tüm çalışma verisi `~/.asistan/` altında (`ASISTAN_HOME` ile değiştirileb
 ├── config.json      ayarlar (izinler, portlar, LLM, arama)
 ├── beden.token      beyin→beden anahtarı        (0600)
 ├── beyin.token      panel→beyin anahtarı        (0600)
+├── 9router.initial-password  ilk servis parolası (0600; rastgele)
 ├── hafiza.md        kalıcı hafıza (insan tarafından da düzenlenebilir)
 ├── gorevler/*.json  görüşme görevleri: brifing + transkript + sonuç
 ├── cebimon.json    kalıcı Cebimon oturumu + görev adımı değerlendirmeleri
@@ -85,8 +86,8 @@ Görüntü ve ses istek sırasında işlenir; medya dosyası olarak kalıcılaş
 ## Güvenlik modeli
 
 1. **Localhost güvenli değildir.** Android'de cihazdaki her uygulama `127.0.0.1:20130`'a bağlanabilir → Beden token ister ve `/saglik` dışında hiçbir şey açık değildir.
-2. **Yetenek bazlı izinler.** Kamera/mikrofon/konuşma/bildirim/pano açık; telefon, SMS, konum, kişiler, kabuk **kapalı** gelir. Her biri `config.json`'dan bilinçli açılır; kapalıyken 403 döner ve LLM'e "izin kapalı" metni gider.
-3. **Beyin LAN'a açılır ama tokensiz hiçbir API/WS çalışmaz.** Tarayıcı `?token=` ile bir kez girer, çerez kalır. TLS için `scripts/termux/tls-uret.sh`.
+2. **Yetenek bazlı izinler.** Kamera/mikrofon/konuşma/bildirim/pano uygulama kapıları varsayılan açık; telefon, SMS, konum, kişiler, kabuk **kapalı** gelir. Kapalı kapı `config.json`'dan ayrıca bilinçli açılmalı; gerekli Android OS iznini vermek tek başına uygulama kapısını açmaz. Kapalıyken 403 döner ve LLM'e "izin kapalı" metni gider.
+3. **Beyin LAN'a açılır ama tokensiz hiçbir API/WS çalışmaz.** Giriş anahtarı POST gövdesiyle doğrulanır; tarayıcı `HttpOnly; SameSite=Lax` çerez alır (HTTPS'te `Secure`, TLS'i proxy sonlandırıyorsa `COOKIE_SECURE=1`). Token URL/localStorage'a yazılmaz; TLS için `scripts/termux/tls-uret.sh`.
 4. **Uzaktan erişimde port açma yok.** Tavsiye: Tailscale (Android uygulaması eski telefonda, cebindekinde de) → `https://100.x.y.z:20131`. 9remote zaten P2P + fiziksel onay.
 5. **Aramalar onaylıdır.** LLM `telefon_ara`'yı ancak izin açıksa kullanabilir; görüşme görevleri panelde insan onayıyla başlar. Görüşme başında AI olduğunu söyler.
 6. **Kabuk erişimi** (`/kabuk`) varsayılan kapalıdır ve LLM araçlarına hiç verilmemiştir; yalnızca panel/otomasyon için düşünülmüştür.
@@ -101,7 +102,7 @@ Görüntü ve ses istek sırasında işlenir; medya dosyası olarak kalıcılaş
 | Beden | 40–60 MB | ffmpeg çağrıları anlık |
 | proot Ubuntu + 9remote | 150–300 MB | yalnızca gerektiğinde çalıştır (`ENABLE_9REMOTE=1`) |
 
-4 GB fiziksel + 1 GB "genişletilmiş RAM" (MIUI swap) ile hepsi bir arada çalışır; 9remote'un 60fps masaüstü akışı ısıyı artırır, uzun süreli değil "gerektiğinde" kullan. Ayrıntı: [donanim-notlari.md](donanim-notlari.md).
+4 GB fiziksel + 1 GB "genişletilmiş RAM" (MIUI swap) hedef yapılandırmadır; tüm servislerin bu cihazda aynı anda çalıştığı ölçülmedi. 9remote'un 60fps masaüstü akışının kaynak/ısı etkisi de gerçek cihazda doğrulanmalı. Ayrıntı: [donanim-notlari.md](donanim-notlari.md).
 
 ## Tasarım kararları
 
@@ -109,4 +110,4 @@ Görüntü ve ses istek sırasında işlenir; medya dosyası olarak kalıcılaş
 - **Türkçe alan adları** (beden, beyin, köprü, görev, hafıza) — proje metaforlarıyla bire bir; tanımlayıcılar ASCII (ş/ğ yok) ki araç adları OpenAI şemasına uysun.
 - **Araç sonuçları metin, görüntüler ayrı kullanıcı mesajı.** OpenAI `tool` mesajları metin taşır; kamera görüntüsü bir sonraki `user` mesajına `image_url` olarak eklenir (yaygın, sağlayıcılar arası uyumlu desen).
 - **Görüşme motoru taşıyıcıdan bağımsız.** Bugün WebSocket+tarayıcı, yarın Twilio medya akışı ya da SIP: motor `metin/sesCal/sesDurdur/durum/bitti` arayüzünü konuşur, gerisini taşıyıcı bilir.
-- **Ölçeklenebilir değil, dayanıklı.** Tek kullanıcı, tek cihaz; hedef 7/24 ayakta kalmak: bash tabanlı yeniden doğma, Termux:Boot, wake-lock, kademeli bekleme.
+- **Ölçeklenebilir değil, dayanıklı.** Tek kullanıcı, tek cihaz; 7/24 çalışma bir tasarım hedefidir, saha doğrulaması yoktur. Bash tabanlı yeniden doğma, Termux:Boot ve wake-lock betikleri bunu amaçlar; gerçek Android davranışı garanti edilmez.
