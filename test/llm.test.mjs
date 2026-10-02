@@ -145,6 +145,50 @@ test('LLMIstemci.seslendir: ElevenLabs başarısız olduğunda yedek motora dü�
   }
 });
 
+test('LLMIstemci.seslendir: Fish Audio yapılandırıldığında doğru API çağrısı yapar ve ses döner', async () => {
+  const orijinalFetch = globalThis.fetch;
+  let cagrilanUrl = '';
+  let cagrilanSecenekler = null;
+
+  globalThis.fetch = async (url, options) => {
+    cagrilanUrl = String(url);
+    cagrilanSecenekler = options;
+    return {
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => new TextEncoder().encode('sahte-fish-audio-mp3').buffer,
+    };
+  };
+
+  const telemetriKayitlari = [];
+  const sahteTelemetri = { yaz: (tur, veri) => telemetriKayitlari.push({ tur, veri }) };
+
+  try {
+    const istemci = new LLMIstemci({
+      fishAudioApiKey: 'fish-key-123',
+      fishAudioVoiceId: 'voice-ref-456',
+      ttsSaglayici: 'fish_audio',
+      telemetry: sahteTelemetri,
+    });
+
+    const sesBuffer = await istemci.seslendir('Fish audio testi');
+    assert.equal(sesBuffer.toString(), 'sahte-fish-audio-mp3');
+    assert.equal(cagrilanUrl, 'https://api.fish.audio/v1/tts');
+    assert.equal(cagrilanSecenekler.headers['Authorization'], 'Bearer fish-key-123');
+    assert.equal(cagrilanSecenekler.headers['Content-Type'], 'application/json');
+
+    const govde = JSON.parse(cagrilanSecenekler.body);
+    assert.equal(govde.text, 'Fish audio testi');
+    assert.equal(govde.reference_id, 'voice-ref-456');
+
+    const ttsLog = telemetriKayitlari.find((k) => k.tur === 'tts');
+    assert.ok(ttsLog);
+    assert.equal(ttsLog.veri.motor, 'fish_audio');
+  } finally {
+    globalThis.fetch = orijinalFetch;
+  }
+});
+
 test('LLMIstemci: sağlayıcı hata gövdesi mesaj/log çıktısına eklenmez', async () => {
   const oncekiEnable = process.env.ENABLE_9ROUTER;
   const oncekiFetch = globalThis.fetch;

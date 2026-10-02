@@ -106,6 +106,8 @@ export function beyinBaslat({ ayar = ayarYukle(), token = tokenAl('beyin'), bede
         elevenlabsApiKey: ayar.beyin.llm.elevenlabsApiKey,
         elevenlabsVoiceId: ayar.beyin.llm.elevenlabsVoiceId,
         elevenlabsModel: ayar.beyin.llm.elevenlabsModel,
+        fishAudioApiKey: ayar.beyin.llm.fishAudioApiKey,
+        fishAudioVoiceId: ayar.beyin.llm.fishAudioVoiceId,
         telemetry: telemetri,
       })
     : llm;

@@ -49,6 +49,8 @@ export class LLMIstemci {
     elevenlabsApiKey,
     elevenlabsVoiceId,
     elevenlabsModel,
+    fishAudioApiKey,
+    fishAudioVoiceId,
     zamanAsimi = 120_000,
     openrouterApiKey,
     groqApiKey,
@@ -61,6 +63,8 @@ export class LLMIstemci {
     this.elevenlabsApiKey = elevenlabsApiKey || process.env.ELEVENLABS_API_KEY || '';
     this.elevenlabsVoiceId = elevenlabsVoiceId || process.env.ELEVENLABS_VOICE_ID || 'cgSgspJ2msm6clMCkdW9';
     this.elevenlabsModel = elevenlabsModel || process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
+    this.fishAudioApiKey = fishAudioApiKey || process.env.FISH_AUDIO_API_KEY || '';
+    this.fishAudioVoiceId = fishAudioVoiceId || process.env.FISH_AUDIO_VOICE_ID || '';
     this.ttsSaglayici = ttsSaglayici || process.env.TTS_SAGLAYICI || '';
 
     this.apiKey = apiKey || process.env.LLM_API_KEY || this.openrouterApiKey || '';
@@ -306,6 +310,36 @@ export class LLMIstemci {
       }
       return buf;
     };
+
+    // 0. Fish Audio: ultra ucuz, yüksek kaliteli sıfır atışlı ses klonlama
+    const fishAudioSecili = this.ttsSaglayici === 'fish_audio' || (this.fishAudioApiKey && this.ttsSaglayici !== 'elevenlabs' && !this.piperModel && this.ttsSaglayici !== 'edge-tts' && this.ttsSaglayici !== '9router');
+    if (this.fishAudioApiKey && fishAudioSecili) {
+      const refId = ses || this.fishAudioVoiceId;
+      try {
+        const govde = {
+          text: metin,
+          format: format || 'mp3',
+        };
+        if (refId) govde.reference_id = refId;
+        const y = await fetch('https://api.fish.audio/v1/tts', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.fishAudioApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(govde),
+          signal: AbortSignal.timeout(Math.min(this.zamanAsimi, 30_000)),
+        });
+        if (!y.ok) throw new Error(`Fish Audio HTTP ${y.status}`);
+        const sesBuffer = Buffer.from(await y.arrayBuffer());
+        if (sesBuffer && sesBuffer.length > 0) {
+          this.telemetri?.yaz('tts', { motor: 'fish_audio', karakter: metin.length });
+          return onbellekleVeDon(sesBuffer);
+        }
+      } catch (hata) {
+        console.log(`[TTS] Fish Audio başarısız (${hata.message}) — yedek motora geçiliyor`);
+      }
+    }
 
     // 1. ElevenLabs: yüksek kaliteli doğal ses (öncelikli TTS veya anahtar tanımlıysa)
     const elevenlabsSecili = this.ttsSaglayici === 'elevenlabs' || (this.elevenlabsApiKey && !this.piperModel && this.ttsSaglayici !== 'edge-tts' && this.ttsSaglayici !== '9router');
