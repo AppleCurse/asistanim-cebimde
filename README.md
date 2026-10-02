@@ -5,8 +5,8 @@
 <h1 align="center">Asistanım Cebimde</h1>
 
 <p align="center">
-  <b>Çekmecede duran eski Android telefonu, 7/24 yaşayan; gören, duyan, konuşan ve senin adına telefon eden kişisel asistana dönüştür.</b><br/>
-  Cebindeki telefondan ona yazarsın; o eski telefonun içinden dünyaya bakar, dinler, arar, konuşur ve sana rapor verir.
+  <b>Eski Android telefonu kişisel asistana dönüştürmeyi amaçlayan açık kaynak prototip; gerçek Android, SIP/RTP ve 7/24 saha doğrulaması henüz yapılmadı.</b><br/>
+  Panel, araç kullanan LLM ve telefon köprüsü kodu vardır; gerçek cihazdaki davranış ayrıca doğrulanmalıdır.
 </p>
 
 <p align="center">
@@ -14,6 +14,7 @@
   <a href="#6-kurulum--adım-adım">🛠 Kurulum</a> ·
   <a href="#7-kullanım">📱 Kullanım</a> ·
   <a href="#10-sorun-giderme">🩺 Sorun giderme</a> ·
+  <a href="docs/durum.md">✅ Gerçek durum</a> ·
   <a href="docs/">📚 Derin dokümanlar</a>
 </p>
 
@@ -43,24 +44,24 @@
 
 ## 1. Bu proje ne işe yarar?
 
-Elinde eski bir Android telefon var (bizimki: **Xiaomi Redmi Note 8**, 4 GB + 1 GB genişletilmiş RAM, 8 çekirdek, root yok). Bu proje o telefonu şuna çevirir:
+Bu depo, eski bir Android telefonu (hedef: **Xiaomi Redmi Note 8**, root yok) kişisel asistana dönüştürmek için yazılmış **teknik prototip / erken alfa** içerir. Beden, beyin, görev/Cebimon ve konuşma/SIP katmanlarının kodu vardır; mock ve otomatik testler gerçek cihazda çalışma veya 7/24 dayanıklılık kanıtı değildir.
 
-- **Sürekli açık bir sunucu** — şarjda durur, Wi-Fi'ye bağlıdır, uyumaz, ölürse kendi kendine yeniden doğar, telefon yeniden başlasa bile kalkar.
-- **Bedeni olan bir yapay zekâ** — kamerası gözü, mikrofonu kulağı, hoparlörü ağzı, telefon hattı ve SMS'i elleri olan bir asistan. Beyni bulut LLM'leri (Claude, GPT, Gemini, DeepSeek… hangisini bağlarsan) — hepsine **tek musluktan** ([9router](https://github.com/decolua/9router)) erişir.
-- **Cebinden yönettiğin bir asistan** — kendi telefonundaki panel (uygulama gibi kurulur) üzerinden ona yazarsın: *"etrafa bak"*, *"pil kaç?"*, *"Ahmet'i ara, yarınki toplantıyı 16:00'a ertele"*. O da yapar, sana anlatır, hafızasına not düşer.
+- **Sürekli açık / 7/24 çalışma yalnızca hedeftir:** supervisor, Termux:Boot ve wake-lock betikleri kodlanmıştır; MIUI/Redmi üzerinde 24 saat veya kesintisiz çalışma saha testi henüz yapılmadı.
+- **Telefon bedeni:** kamera, mikrofon, hoparlör, telefon/SMS gibi Termux:API kabiliyetleri ve LLM araçları yazılmıştır. Gerçek donanım doğrulaması bekliyor.
+- **Panel:** PWA/web paneli ve sohbet/görev akışı mevcuttur. Uzak erişimde TLS/Tailscale tercih et; kurulum ve sınırlar için [gerçek durum](docs/durum.md) sayfasına bak.
 
-Kısacası: **"asistanım cebimde"** — ama asistan aslında evdeki eski telefonda yaşıyor; cebinde sadece kumandası var.
+Asistan eski telefonda çalışacak, cebindeki telefondan yönetilecek şekilde tasarlanmıştır; cihaz üzerinde uçtan uca saha kanıtı henüz yoktur.
 
 ### Kimin için?
 - Elinde atıl bir Android telefon olan ve "bu bir işe yarasın" diyen herkes.
 - Kendi yapay zekâ asistanını **kendi cihazında** barındırmak isteyen (verilerin telefonunda kalır; yalnızca LLM istekleri seçtiğin sağlayıcıya gider).
-- Randevu alma, teyit, sipariş gibi telefon işlerini asistana devretmek isteyen (bkz. [§3](#3-neler-yapamaz-dürüst-sınırlar): bu kısım VoIP hattı ister — SIP/baresip köprüsü hazır).
+- Telefon üzerinden iş devrini hedefleyen kullanıcılar (SIP/baresip köprüsü kodlanmıştır; gerçek SIP/RTP görüşmesi henüz sahada doğrulanmamıştır).
 
 ---
 
 ## 2. Neler yapabilir? (örneklerle)
 
-Panelden ya da terminalden yazdığın cümleye göre asistan uygun **aracı** kendisi seçer. Aşağıdakiler bugün çalışan yetenekler:
+Panelden ya da terminalden yazdığın cümleye göre asistan uygun **aracı** kendisi seçer. Aşağıdaki yetenekler kaynakta kodlanmış ve otomatik/mock test kapsamındadır; gerçek Android'de çalıştıkları tek başına bu testlerden çıkarılamaz.
 
 | Sen dersin ki… | Asistan ne yapar | Kullandığı araç |
 |---|---|---|
@@ -84,7 +85,7 @@ Bunlara ek olarak:
 
 - **Sesli sohbet:** Panelin 📞 Telefon sayfasından asistanla **konuşarak** sohbet edersin (cebindeki telefonun mikrofonu ve hoparlörüyle, ücretsiz).
 - **Görüşme provası:** Planlanan bir görevi önce sen "karşı taraf" olarak oynayıp asistanın nasıl konuşacağını dinlersin.
-- **VoIP'tan arama (asistan konuşur):** Görev kartındaki **📳 VoIP'tan ara** ile asistan numarayı internet hattından (SIP/baresip) arar ve kendi sesiyle konuşur. Ses kanalı sağlığı `ses-testi.sh` ile doğrulanır; test yeşil olmadan arama açılmaz.
+- **VoIP/SIP araması (kodlanmış, saha doğrulaması bekliyor):** Görev kartı ve SIP/baresip akışı vardır; `ses-testi.sh` yeşil olmadan arama kapısı çaldırmaz. Gerçek SIP hesabı, RTP, karşı taraf ve çift yönlü ses bu kaynak/test arşivinde doğrulanmış değildir.
 - **Hattan çevirme:** Görev için eski telefonun SIM'inden numarayı çevirir, konuşma notlarını ekranında gösterir; konuşmayı sen yaparsın, sonucu girersin, hafızaya yazılır.
 - **Kayıt silme:** Her görev kartındaki **🗑 Kaydı sil** ile brifing + transkript kalıcı olarak silinir (mahremiyet: ses kaydı zaten saklanmaz, sadece metin transkripti durur).
 - **Kalıcı hafıza:** `~/.asistan/hafiza.md` — düz metin; sen de elle düzenleyebilirsin.
@@ -94,7 +95,7 @@ Bunlara ek olarak:
 
 ## 3. Neler yapamaz? (dürüst sınırlar)
 
-- **Eski telefonun SIM'iyle "konuşamaz".** Root'suz Android, uygulamalara çağrı sesini vermez: asistan numarayı çevirebilir ama hatta kendi sesini basamaz, karşı tarafı duyamaz. Bu Android'in kısıtı, kodun değil. Asistanın **gerçekten arayıp konuşması** için ses internet hattından (VoIP/SIP) geçer — **baresip/SIP köprüsü entegre** (Zadarma; ses kanalı gözcüsü + arama kapısı + `ses-testi.sh` teşhisi). Ayrıntı, maliyet ve seçenekler: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
+- **Eski telefonun SIM'iyle "konuşamaz".** Root'suz Android, uygulamalara çağrı sesini vermez: asistan numarayı çevirebilir ama hatta kendi sesini basamaz, karşı tarafı duyamaz. Baresip/SIP köprüsü kodlanmış ve protokol/ses birimleri test edilmiştir; gerçek SIP hesabı + gerçek RTP + karşı tarafla çift yönlü çağrı henüz doğrulanmamıştır. Ayrıntı ve elle test listesi: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
 - **Gerçek cihaz doğrulaması:** Redmi Note 8 (Snapdragon 665, Android 10/11 MIUI) hedef cihazdır. Bu kod oturumunda gerçek telefona/ADB’ye erişim yok; kamera, mikrofon, pil, Android TTS, arka plan servisi ve HTTPS paneli donanım üzerinde yeniden doğrulanmadı. Otomatik testler mock cihaz kullanır.
 - **Çevrimdışı düşünemez.** Beyin buluttaki LLM'dir; internet yoksa sadece "beden" (kamera, TTS, bildirim) çalışır.
 - **Kamerayı ekran kilitliyken bazı MIUI sürümleri vermez.** Çözüm §10'da.
@@ -125,7 +126,7 @@ Bunlara ek olarak:
 | 👂 **Kulak** | Dinleme | Android konuşma tanıma (ücretsiz) **veya** 9router `/audio/transcriptions` |
 | 👄 **Ağız** | Konuşma | Android TTS (ücretsiz, çevrimdışı) **veya** 9router `/audio/speech` |
 | ✋ **Eller** | Telefon, SMS, bildirim, pano, konum, fener | Termux:API |
-| ❤️ **Kalp** | Ölürse doğ, açılışta kalk, uyuma | `servis.sh` döngüsü + Termux:Boot + wake-lock |
+| ❤️ **Kalp** | Yeniden başlatma/açılış mekanizması (saha testi bekliyor) | `servis.sh` + Termux:Boot + wake-lock kodu |
 | 🔌 **Sinir sistemi** | Her yerden içeri | Panel (token) + 9remote (P2P, fiziksel onay) + sshd |
 | 📞 **Köprü** | Telefon görüşmesi motoru | `beyin/kopru/` — tarayıcı + VoIP/SIP (baresip) |
 
@@ -138,8 +139,8 @@ Derinlemesine: [docs/mimari.md](docs/mimari.md)
 ## 5. Gereksinimler
 
 ### Donanım
-- **Eski telefon:** Android 7+ (arm64). Test hedefi Redmi Note 8 (Android 9–11, MIUI 12.x). 3 GB RAM asgari, 4 GB rahat. Sürekli şarjda duracak.
-- **Cebindeki telefon:** Herhangi bir telefon/tablet/bilgisayar; Android Chrome sesli görüşme için en iyisi.
+- **Eski telefon için tasarım hedefi:** Android 7+ (arm64); örnek hedef Redmi Note 8 (Android 9–11, MIUI 12.x). Bu uyumluluk gerçek cihazda doğrulanmadı; RAM/ısı gereksinimleri ölçülmedi.
+- **Paneli açan cihaz:** Güncel bir tarayıcı önerilir; sesli görüşme ve PWA kurulumu cihaz/tarayıcıya göre değişir, hedef kombinasyonlarda saha testi yapılmadı.
 - Aynı Wi-Fi (ilk kurulum için); dışarıdan erişim için Tailscale (ücretsiz).
 
 ### Eski telefona kurulacak uygulamalar (hepsi **F-Droid**'den — Play Store sürümleri bakımsız, uyumsuz)
@@ -153,7 +154,7 @@ Derinlemesine: [docs/mimari.md](docs/mimari.md)
 ### Hesaplar
 - **Bir LLM sağlayıcısı.** 9router'ın panelinden ücretsiz katmanlar bağlanabiliyor (OpenCode Free kayıtsız; Kiro; Vertex kredisi…) ya da kendi OpenAI / Anthropic / Gemini / DeepSeek / Groq anahtarın. Para ödemeden başlanabilir.
 - Sesli görüşmede sunucu sesi istersen 9router'a bir STT/TTS sağlayıcısı (Whisper, Gemini, Groq, ElevenLabs…) — **zorunlu değil**, cebindeki telefonun kendi tanıma/okuma motoru ücretsiz çalışır.
-- Gerçek arama (VoIP) için SIP hesabı (ör. Zadarma) gerekir; `.env`'ye `SIP_*` bilgilerini yaz, `bash scripts/proot/baresip-kur.sh` ile yapılandır. Ayrıntı: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
+- VoIP denemesi için SIP hesabı (ör. Zadarma) ve Baresip yapılandırması gerekir; kodlanmış akış gerçek SIP/RTP ve karşı tarafla saha testinden geçmedi. Ayrıntı ve doğrulama listesi: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
 
 ---
 
@@ -165,10 +166,10 @@ Toplam süre ilk seferde 30–40 dakika (paket indirmeleri dahil). Komutlar **es
 
 1. Telefonu sıfırla ya da gereksiz uygulamaları kaldır; Google hesabı ekle (konuşma tanıma için Google uygulaması gerekir).
 2. Wi-Fi'ye bağla. **Ayarlar → Wi-Fi → Gelişmiş → Uyku modunda Wi-Fi açık kalsın: Her zaman.**
-3. **Ayarlar → Ek ayarlar → Bellek genişletme** açık olsun (4 + 1 GB).
+3. **Ayarlar → Ek ayarlar → Bellek genişletme** seçeneği cihazda varsa açılabilir; 4+1 GB yalnızca Redmi tasarım hedefindeki örnektir, gereksinim veya ölçülmüş saha sonucu değildir.
 4. Geliştirici seçeneklerini aç (Ayarlar → Telefon hakkında → MIUI sürümüne 7 kez dokun). İçinde **"Ekran açıkken uyanık kal"** (şarjda) açılabilir; **"MIUI optimizasyonu"** kapatmak arka plan öldürmeyi azaltır (isteğe bağlı).
 5. F-Droid'i kur (f-droid.org), oradan **Termux**, **Termux:API**, **Termux:Boot** kur.
-6. **Ayarlar → Uygulamalar → Termux:API → İzinler:** Kamera, Mikrofon, Telefon, SMS, Kişiler, Konum, Bildirim → hepsine izin ver. **Termux** için de aynıları.
+6. **Android OS izinleri:** Termux ve Termux:API için yalnızca kullanacağın donanım/işlevlerin izinlerini ver (ör. kamera, mikrofon). Bunlar uygulama içindeki ayrı yetenek kapılarını açmaz: telefon/SMS/konum/kişiler/kabuk kapıları `config.json` içinde varsayılan kapalıdır; gerekli OS izni olsa bile ayrıca bilinçli yapılandırılmaları gerekir.
 7. **MIUI pil yönetimi:** Termux, Termux:API, Termux:Boot için ayrı ayrı: Pil tasarrufu → **Kısıtlama yok**; **Otomatik başlat** → aç. Son uygulamalar ekranında Termux'u aşağı çekip **kilitle**.
 
 ### 6.2 Termux'u ilk kez aç (2 dk)
@@ -214,7 +215,7 @@ bash ~/asistanim-cebimde/scripts/termux/kur.sh --tls
 5. `~/.asistan/` dizini, `config.json` (varsayılanlarla), `beden.token`, `beyin.token`.
 6. `.env` yoksa `.env.example`'dan kopyalar.
 7. `--tls` ise sertifika; `--proot` ise Ubuntu.
-8. `termux-battery-status`, `termux-camera-info`, `termux-tts-engines` çalıştırır → **Android izin pencereleri burada çıkar, hepsine izin ver.**
+8. `termux-battery-status`, `termux-camera-info`, `termux-tts-engines` çalıştırır → ilgili Android OS izin pencereleri çıkabilir. İstediğin işlevler için izin ver; OS izni `config.json` içindeki ayrı uygulama-yetenek kapılarını otomatik açmaz.
 9. "Sıradaki adımlar" listesini basar.
 
 Bittiğinde doğrula:
@@ -231,7 +232,7 @@ node -v && 9router --version
 
 ### 6.4 9router'ı başlat, beyni bağla (5 dk)
 
-9router, bulut LLM sağlayıcılarına bağlanan OpenAI uyumlu yerel ağ geçididir. `baslat.sh` komutu 9router'ı `scripts/termux/9router-servis.sh` üzerinden arka planda, TUI terminali gerektirmeden ve RAM tüketimini sınırlayarak (`--max-old-space-size=512`) kesintisiz çalıştırır.
+9router, bulut LLM sağlayıcılarına bağlanan OpenAI uyumlu yerel ağ geçididir. `baslat.sh`, varsayılan ayarda 9router'ı `scripts/termux/9router-servis.sh` üzerinden arka planda başlatmayı ve servis döngüsüyle yeniden çalıştırmayı dener; bu davranışın gerçek Termux cihazında veya uzun süre kesintisiz çalıştığı doğrulanmış değildir. Node heap'i `--max-old-space-size=512` ile sınırlandırılır.
 
 Elle test etmek için:
 
@@ -239,14 +240,14 @@ Elle test etmek için:
 bash scripts/termux/9router-servis.sh
 ```
 
-Aynı Wi-Fi ağındaki bilgisayardan veya cep telefonundan `http://<telefon-ip>:20128` (veya eski telefondan `http://localhost:20128`) adresini açın. İlk giriş şifresi: `asistan123`.
+Aynı Wi-Fi ağındaki bilgisayardan veya cep telefonundan `http://<telefon-ip>:20128` (veya eski telefondan `http://localhost:20128`) adresini açın. İlk kurulumda 9router başlangıç parolası rastgele üretilip `~/.asistan/9router.initial-password` dosyasına `0600` izinle kaydedilir; başka bir Termux oturumunda `cat ~/.asistan/9router.initial-password` ile görüntüleyin (özelleştirilmiş `ASISTAN_HOME` kullanıyorsanız `.env`'deki dizin geçerlidir). Daha önce kurulmuş bir 9router hesabının parolası otomatik değiştirilmez.
 
 1. **Providers** → bir sağlayıcı bağla. Para harcamadan başlamak için **OpenCode Free** (kayıt yok) veya **Kiro** (aylık ücretsiz kredi); kendi anahtarın varsa OpenAI / Anthropic / Gemini / DeepSeek / Groq… 
 2. **Dashboard** → **API key**'i kopyala (`9r-…` gibi).
 3. **Models** listesinden bir model adı seç (örn. `kr/claude-sonnet-4.5`, `oc/…`). Telefon görüşmelerinde hız önemli → hızlı bir model (Groq/Gemini Flash sınıfı) seçmek iyi olur.
 4. (İsteğe bağlı) **Speech** sağlayıcısı bağla → sunucu sesi (STT/TTS) için.
 
-9router `baslat.sh` tarafından da arka planda otomatik başlatılır.
+`ENABLE_9ROUTER=1` varsayılandır; `baslat.sh` yerel 9router'ı başlatır. Doğrudan sağlayıcı kullanacaksan `LLM_BASE_URL` ve ilgili anahtarı açıkça yapılandırıp `ENABLE_9ROUTER=0` ayarla. Uzak/doğrudan endpoint `1` ile verilirse başlatma betiği hata verip durur; `0` iken 9router başlatılmaz.
 
 ### 6.5 .env dosyasını doldur (2 dk)
 
@@ -258,6 +259,7 @@ nano .env          # Ctrl+O kaydet, Ctrl+X çık
 En az bunlar:
 
 ```env
+LLM_BASE_URL=http://127.0.0.1:20128/v1
 LLM_API_KEY=9r-buraya-9router-anahtarı
 LLM_MODEL=kr/claude-sonnet-4.5        # 9router'daki model adı; boş bırakırsan ilk uygun model seçilir
 KULLANICI_ADI="Adın Soyadın"          # asistan aramalarda "X'in dijital asistanıyım" der
@@ -272,7 +274,7 @@ Model listesini görmek için: `npm run modeller`
 bash scripts/termux/baslat.sh
 ```
 
-Beklenen çıktı:
+Örnek çıktı (temsili; başlatma/süreç satırları gerçek Android cihazında doğrulanmış çalışma kanıtı değildir):
 
 ```
 ▶ Uyanık kalma kilidi
@@ -287,16 +289,17 @@ Beklenen çıktı:
   beden    ✓ çalışıyor (pid 1250)
   beyin    ✓ çalışıyor (pid 1262)
   ...
-  Panel (aynı Wi-Fi/Tailscale): https://192.168.1.23:20131/?token=3f9a…
+  Yerel Panel (aynı Wi-Fi): https://192.168.1.23:20131/
+  Giriş anahtarı: cat ~/.asistan/beyin.token
 ```
 
-O adresi **cebindeki telefonda** aç. HTTPS sertifikası kendinden imzalı olduğu için tarayıcı bir kez "güvenli değil" der → **Gelişmiş → Yine de devam et.** Token adresle birlikte girildiği için çerez kalır; bir daha sormaz.
+Panel adresini **cebindeki telefonda** aç. HTTPS sertifikası kendinden imzalı olduğu için tarayıcı bir kez "güvenli değil" der → **Gelişmiş → Yine de devam et.** Giriş ekranına erişim anahtarını gir; tarayıcı bunu yalnızca POST gövdesiyle gönderir, URL/localStorage'a koymaz ve `HttpOnly` oturum çerezi alır.
 
 Panelde **Yaşam belirtileri** kartında "Beden: yaşıyor (termux)" ve pil yüzdesini görüyorsan asistan hayatta. İlk mesajın: *"merhaba, neler yapabiliyorsun?"*
 
 ### 6.7 Cebindeki telefona uygulama olarak kur (1 dk)
 
-Panel bir PWA'dır. Android Chrome'da üst çubukta **⬇ Kur** düğmesi belirir → bas → ikonlu, tam ekran uygulama olarak ana ekrana iner (📞 Telefon kısayoluyla). Düğme çıkmazsa tarayıcı menüsünden **Ana ekrana ekle**. iPhone'da Safari → Paylaş → Ana Ekrana Ekle.
+Panel için PWA manifesti ve servis çalışanı kodlanmıştır; kurulum seçeneği platform ve tarayıcının PWA desteğine/koşullarına bağlıdır ve hedef cihazlarda saha testi yapılmamıştır. Destekleyen Android Chrome sürümlerinde **⬇ Kur** veya menüde **Ana ekrana ekle** görünebilir; iOS'ta Safari'nin **Paylaş → Ana Ekrana Ekle** akışı sürüme göre kullanılabilir. Bu seçeneklerin her cihazda görüneceği garanti edilmez.
 
 ### 6.8 Açılışta otomatik başlasın (1 dk)
 
@@ -304,7 +307,7 @@ Panel bir PWA'dır. Android Chrome'da üst çubukta **⬇ Kur** düğmesi beliri
 bash scripts/termux/boot-kur.sh
 ```
 
-Sonra **Termux:Boot uygulamasını bir kez aç** (Android kancayı kaydeder). Telefonu yeniden başlat → ~15 sn sonra her şey kalkar (`~/.asistan/log/boot.log`).
+Sonra **Termux:Boot uygulamasını bir kez aç** (Android'in kancayı kaydetmesi için). Kurulan hook yeniden başlatmada yaklaşık 15 sn bekleyip `baslat.sh`'ı çalıştırmayı dener ve `~/.asistan/log/boot.log` dosyasına yazar. Android'in hook'u çağırması ve servislerin sonrasında ayakta kalması cihaz/ROM ayarlarına bağlıdır; bu akış gerçek cihazda doğrulanmamıştır.
 
 ### 6.9 (İsteğe bağlı) Dışarıdan erişim — Tailscale
 
@@ -354,7 +357,7 @@ Görüntüyle ilgili istekler (yüz, yazı, nesne) LLM'in görüntü desteğine 
 2. **Brifing:** LLM bunu yapılandırır: kişi (`Dr. Aylin`, numara rehberden veya senden), amaç, konuşma noktaları (selamla-kendini tanıt-talebi ilet-alternatif sor-teyit et), kabul edilebilir sonuçlar, **sınırlar** (ücret konuşma, başka randevu verme), üslup, açılış cümlesi, başarı kriteri, eksik bilgi. Eksik bilgi varsa durum `taslak` olur, panelde kırmızı yazar → tamamla.
 3. **Onay ve mod:**
    - **📞 Tarayıcıdan görüş** — Telefon sayfası açılır; asistan açılış cümlesini söyler; **sen karşı taraf rolünde** konuşursun. Prova ve test için.
-   - **📳 VoIP'tan ara** — asistan numarayı SIP hattından arar ve **kendi sesiyle konuşur** (baresip köprüsü). Ses kanalı doğrulanmadıysa arama kapalıdır: `bash scripts/termux/ses-testi.sh`.
+   - **📳 VoIP'tan ara** — kodlanmış baresip köprüsüyle SIP arama akışını başlatır; gerçek cihazda/SIP hattında çift yönlü ses doğrulanmamıştır. Ses kanalı doğrulanmadıysa arama kapalıdır: `bash scripts/termux/ses-testi.sh`.
    - **📱 Hattan çevir** — eski telefonun SIM'i numarayı çevirir (izin `telefon: true` olmalı), ekranda brifing "kopya kâğıdı" çıkar, konuşmayı sen yaparsın. Bitince görev kartından sonucu gir (API: `POST /api/gorevler/:id/sonuc`).
 4. **Sonuç:** Görüşme bitince LLM transkriptten `{başarılı mı, özet, kararlar, takip}` çıkarır; görev `tamamlandi`/`basarisiz` olur; hafızaya "Görüşme #… : özet" düşer.
 
@@ -403,7 +406,7 @@ npm run modeller                 # 9router'daki modeller
     "port": 20130,
     "mod": "otomatik",              // otomatik | termux | mock  (mock = sahte cihaz, geliştirme)
     "fotografGenislik": 1280,       // ffmpeg varsa fotoğraflar bu genişliğe küçültülür (0 = küçültme)
-    "izinler": {                    // Her yetenek ayrı anahtar. false → 403 ve LLM'e "izin kapalı"
+    "izinler": {                    // Uygulama yetenek kapısı; false → 403. Android OS izni bunu kendiliğinden açmaz.
       "kamera": true, "mikrofon": true, "konusma": true, "bildirim": true, "pano": true,
       "telefon": false,             // termux-telephony-call, arama kayıtları
       "sms": false,                 // gönder + oku
@@ -446,10 +449,12 @@ Değişiklik sonrası: `bash scripts/termux/durdur.sh beden beyin && bash script
 |---|---|---|
 | `ASISTAN_HOME` | `~/.asistan` | Tüm çalışma verisi |
 | `LLM_BASE_URL` | `http://127.0.0.1:20128/v1` | 9router adresi |
-| `LLM_API_KEY` | — | 9router panelinden |
-| `LLM_MODEL` | (otomatik) | Model adı |
-| `STT_MODEL` / `TTS_MODEL` / `TTS_VOICE` | `whisper-1` / `tts-1` / `alloy` | 9router ses modelleri |
-| `STT_SAGLAYICI` / `TTS_SAGLAYICI` | `android` | `android` veya `9router` |
+| `LLM_API_KEY` | — | Yerel 9router API anahtarı; doğrudan sağlayıcı için uygun anahtar değişkeni |
+| `LLM_MODEL` | (otomatik) | Model adı; boşsa 9router model listesinden seçilir |
+| `ENABLE_9ROUTER` | `1` | `1`: yerel 9router varsayılanı; `0`: açıkça yapılandırılmış doğrudan sağlayıcı modu |
+| `INITIAL_PASSWORD` | rastgele üretilir | İsteğe bağlı 9router ilk parolası; ilk başlatmada `~/.asistan/9router.initial-password` dosyasına `0600` ile kaydedilir |
+| `STT_MODEL` / `TTS_MODEL` / `TTS_VOICE` | `whisper-large-v3-turbo` / `tts-1` / `tr-TR-EmelNeural` | Ses modelleri/sesi |
+| `STT_SAGLAYICI` / `TTS_SAGLAYICI` | `9router` / `piper` | STT ve TTS sağlayıcısı; doğrudan Groq kullanımı `ENABLE_9ROUTER=0` gerektirir |
 | `BEDEN_HOST` / `BEDEN_PORT` | `127.0.0.1` / `20130` | Beden |
 | `BEDEN_MOD` | `otomatik` | `mock` → sahte cihaz |
 | `BEDEN_TOKEN` / `BEYIN_TOKEN` | dosyadan | Boşsa `~/.asistan/*.token` üretilir |
@@ -464,6 +469,7 @@ Değişiklik sonrası: `bash scripts/termux/durdur.sh beden beyin && bash script
 config.json      ayarlar                       hafiza.md        kalıcı hafıza
 beden.token      beyin→beden anahtarı (0600)   gorevler/*.json  görevler: brifing + transkript + sonuç
 beyin.token      panel→beyin anahtarı (0600)   sohbet/*.jsonl   sohbet günlükleri (oturum başına)
+9router.initial-password  rastgele servis başlangıç parolası (0600)
 veri/            fotoğraflar, ses kayıtları    log/             beden.log beyin.log 9router.log boot.log
 run/             pid dosyaları                 tls/             cert.pem key.pem (HTTPS)
 ```
@@ -475,7 +481,7 @@ run/             pid dosyaları                 tls/             cert.pem key.pe
 ```bash
 cd ~/asistanim-cebimde
 bash scripts/termux/baslat.sh              # hepsini başlat (zaten çalışanı atlar)
-bash scripts/termux/durum.sh               # kim yaşıyor + sağlık uçları + panel adresi/token
+bash scripts/termux/durum.sh               # kim yaşıyor + sağlık uçları + token içermeyen panel adresi
 bash scripts/termux/ses-testi.sh           # ses gidiş hattı teşhisi (telefonu ÇALDIRMADAN; arama kapısını açar/kapar)
 bash scripts/termux/durdur.sh              # hepsini durdur (wake-lock'u da bırakır)
 bash scripts/termux/durdur.sh beyin        # sadece birini
@@ -487,7 +493,7 @@ ls ~/.asistan/veri/                        # çekilen fotoğraflar / kayıtlar
 
 **Güncelleme:** tek satır kurulumu tekrar çalıştır (paketi üstüne açar; `.env` ve `~/.asistan` korunur), sonra `durdur.sh` + `baslat.sh`. Git ile kurduysan `git pull && npm install`.
 
-**Tokenı yenileme:** `rm ~/.asistan/beyin.token` → yeniden başlat → yeni token; cebindeki tarayıcıda `?token=` ile tekrar gir.
+**Tokenı yenileme:** `rm ~/.asistan/beyin.token` → beyni yeniden başlat → yeni anahtarı `cat ~/.asistan/beyin.token` ile al ve giriş ekranına gir. Anahtarı URL'ye ekleme.
 
 ---
 
@@ -497,7 +503,7 @@ ls ~/.asistan/veri/                        # çekilen fotoğraflar / kayıtlar
 |---|---|
 | Panelde **"Beden: ulaşılamıyor"** | `bash scripts/termux/durum.sh`; `~/.asistan/log/beden.log`. Port çakışması → `.env` `BEDEN_PORT`. |
 | Beden **mock** modunda | `termux-battery-status` çalışmıyor → Termux:API **uygulaması** (F-Droid) veya `pkg install termux-api` eksik. |
-| **"LLM hazır değil"** / sohbet hata | 9router çalışmıyor (`9router` yazıp panelini aç), `LLM_API_KEY` yanlış, sağlayıcı bağlı değil. Test: `curl -H "Authorization: Bearer $LLM_API_KEY" http://127.0.0.1:20128/v1/models` |
+| **"LLM hazır değil"** / sohbet hata | 9router çalışmıyor (ön planlı tanılama için `bash scripts/termux/9router-servis.sh`; normal kullanımda `bash scripts/termux/baslat.sh`), `LLM_API_KEY` yanlış veya sağlayıcı bağlı değil. Test: `curl -H "Authorization: Bearer $LLM_API_KEY" http://127.0.0.1:20128/v1/models` |
 | Kamera **zaman aşımı** (30–45 sn) | Başka uygulama kamerayı tutuyor; izinler; **ekran kilitliyken** bazı MIUI'ler kamerayı vermez → Ayarlar → Kilit ekranı → Yok, parlaklık en düşük; ya da "ekran açık kalsın" + siyah duvar kâğıdı. |
 | Mikrofon kaydı **boş** | İzin; arama sırasında mikrofon telefon uygulamasında kilitli olur. |
 | `termux-speech-to-text` boş | Google uygulaması / Speech Services / Türkçe paket (§6.3). |
@@ -507,8 +513,8 @@ ls ~/.asistan/veri/                        # çekilen fotoğraflar / kayıtlar
 | 9remote `sharp`/`koffi`/`node-pty` hatası | Termux'ta değil **proot**'ta çalıştır: `bash scripts/proot/9remote.sh` |
 | `node-machine-id` hatası (proot) | `/etc/machine-id` yok → `tr -d '-' < /proc/sys/kernel/random/uuid > /etc/machine-id` |
 | Bellek doluyor / ısınıyor | 9remote masaüstü akışını sadece gerektiğinde; 9router'a `NODE_OPTIONS=--max-old-space-size=512`; pil sıcaklığı `durum.sh`'ta (42 °C üstü sürekli ise havalandır). |
-| 9router **arka planda hemen kapanıyor** | `9router` ikili dosyası etkileşimli terminal (TUI) bekler. Arka planda kesintisiz çalışması için `scripts/termux/9router-servis.sh` kullanılır (`baslat.sh` bunu otomatik yapar). |
-| 9router **şifre hatası / mustChangePassword** | 9router uzaktan erişimde varsayılan şifreyi reddedebilir. `INITIAL_PASSWORD=asistan123` ortam değişkeniyle başlatılır, panele `asistan123` ile girilir. |
+| 9router **arka planda hemen kapanıyor** | `9router` ikili dosyası etkileşimli terminal (TUI) bekleyebilir. Betikler arka plan servisi ve yeniden başlatma döngüsü kurar; gerçek cihazdaki kararlılığı ayrıca sınayın. |
+| 9router **şifre hatası / mustChangePassword** | İlk parola `scripts/termux/9router-servis.sh` tarafından rastgele oluşturulup `~/.asistan/9router.initial-password` dosyasına `0600` izinle kaydedilir; `cat ~/.asistan/9router.initial-password` ile görüntüleyin. Var olan 9router hesabının parolası kendiliğinden sıfırlanmaz; bu durumda mevcut hesabın parolasını kullanın veya 9router'ın kendi parola sıfırlama yolunu izleyin. |
 | Termux:API **izin vermiyor / imza hatası** | Termux, Termux:API ve Termux:Boot uygulamalarının tamamı **aynı kaynaktan** (hepsi F-Droid veya hepsi aynı GitHub release'i) kurulmalı; farklı imza anahtarları Android izinlerini engeller. |
 | ADB ile **hızlı arka plan beyaz listesi** | Bilgisayara USB ile bağlıysa tek komutla kısıtlamaları kaldır: `adb shell dumpsys deviceidle whitelist +com.termux +com.termux.api +com.termux.boot` |
 | `unzip: cannot find` | `termux-setup-storage` yapılmadı ya da dosya adı farklı: `ls ~/storage/downloads/` |
@@ -521,8 +527,8 @@ Daha fazlası: [docs/kurulum.md](docs/kurulum.md), [docs/donanim-notlari.md](doc
 ## 11. Güvenlik modeli
 
 1. **Android'de localhost herkese açıktır** — cihazdaki her uygulama `127.0.0.1:20130`'a bağlanabilir. Bu yüzden Beden `/saglik` dışında her istekte `Authorization: Bearer <beden.token>` ister ve yalnızca `127.0.0.1` dinler.
-2. **Yetenek bazlı izinler.** Kamera/mikrofon/konuşma/bildirim/pano açık; **telefon, SMS, konum, kişiler, kabuk kapalı** gelir. Her biri bilinçli açılır.
-3. **Panel token'sız çalışmaz.** `?token=` ile bir kez gir, çerez kalır; API için `Authorization: Bearer <beyin.token>`. WebSocket de aynı kontrolden geçer.
+2. **Yetenek bazlı izinler.** Kamera/mikrofon/konuşma/bildirim/pano uygulama kapıları varsayılan açık; **telefon, SMS, konum, kişiler, kabuk kapalı** gelir. Kapalı bir uygulama kapısını ayrıca yapılandırarak açmak ve gerektiğinde Android OS izni vermek gerekir; yalnızca OS izni vermek kapıyı açmaz.
+3. **Panel token'sız çalışmaz.** Giriş ekranı anahtarı POST gövdesiyle doğrular; tarayıcıya `HttpOnly; SameSite=Lax` oturum çerezi verir (`HTTPS` varsa ayrıca `Secure`; TLS'i proxy/tünel sonlandırıyorsa `COOKIE_SECURE=1`). Panel anahtarı URL'ye veya `localStorage`'a koymaz; aynı-kaynak API ve WebSocket çerezle çalışır. Harici istemciler `Authorization: Bearer <beyin.token>` kullanabilir.
 4. **Dışarıya port açma yok.** Tailscale (P2P, WireGuard) veya 9remote (split-key + fiziksel Approve).
 5. **Aramalar insan onaylıdır.** Görevler panelde onayla başlar; LLM hattan aramayı ancak `telefon` izni açıksa yapabilir; görüşmede AI olduğunu söyler.
 6. **Kabuk erişimi** LLM'e hiç verilmemiştir; `/kabuk` ucu varsayılan kapalıdır.
@@ -542,7 +548,7 @@ asistanim-cebimde/
 ├── beyin/                    AJAN + PANEL + KÖPRÜ
 │   ├── index.mjs             HTTP(S) sunucu (:20131), REST API, statik dosyalar, WS, TLS
 │   ├── asistan.mjs           araç kullanan sohbet döngüsü, sistem mesajı, oturumlar, günlük
-│   ├── araclar.mjs           16 araç (OpenAI function-calling şeması + çalıştırıcı)
+│   ├── araclar.mjs           17 araç (OpenAI function-calling şeması + çalıştırıcı)
 │   ├── gorev.mjs             görüşme görevleri: brifing, kişilik, özet; ~/.asistan/gorevler
 │   ├── llm.mjs               9router istemcisi: sohbet, STT, TTS, model seçimi, JSON ayıklama
 │   ├── beden-istemci.mjs     beyin→beden HTTP istemcisi
@@ -563,8 +569,8 @@ asistanim-cebimde/
 │   ├── proot/ubuntu-kur.sh   Ubuntu + Node 22 + 9remote  (icerde-kur.sh Ubuntu içinde çalışır)
 │   ├── proot/9remote.sh      Ubuntu içinde 9remote (depo ve ~/.asistan bağlı)
 │   └── dev/sahte-ortam.mjs   telefon olmadan tam ortam; dev/paketle.sh sürüm paketi
-├── test/                     node:test — sahte 9router + sahte cihaz ile uçtan uca (40 test)
-├── docs/                     mimari, kurulum, telefon görüşmesi, yol haritası, donanım notları
+├── test/                     node:test — sahte 9router + sahte cihaz ile uçtan uca (81 test)
+├── docs/                     gerçek durum, mimari, kurulum, telefon görüşmesi, yol haritası, donanım
 ├── .github/workflows/        surum.yml: release yayınlanınca test + paket + dosya yükleme
 ├── AGENTS.md                 bu depoda çalışan yapay zekâ ajanları için kurallar
 └── .env.example              tüm ortam değişkenleri açıklamalı
@@ -579,6 +585,7 @@ asistanim-cebimde/
 | Yöntem ve yol | Ne yapar |
 |---|---|
 | `GET /saglik` | (token'sız) yaşıyor mu |
+| `POST /api/giris` `{token}` | anahtarı doğrular, `HttpOnly` oturum çerezi kurar (URL query tokenı kabul edilmez) |
 | `GET /api/durum` | beden sağlığı + yetenekler, LLM, ağ, bellek |
 | `GET /api/modeller` | 9router model listesi |
 | `POST /api/sohbet` `{oturum, metin, resimler?}` | asistan yanıtı `{metin, adimlar, kullanim}` |
@@ -593,7 +600,7 @@ asistanim-cebimde/
 | `POST /api/gorevler/:id/hucresel-ara` | hattan çevir, brifing döner |
 | `POST /api/gorevler/:id/sonuc` `{basarili, ozet, kararlar?, takip?}` | elle sonuç |
 | `POST /api/gorevler/:id/sil` | görev kaydını + transkripti kalıcı sil (mahremiyet) |
-| `WS /ws/telefon?token=` | görüşme: `{tip:'baslat', gorevId?, mod}` → `{tip:'metin'…}`, ses ikili çerçeve; `{tip:'metin'}`, `{tip:'ses', mime}`+binary, `{tip:'bitir'}` |
+| `WS /ws/telefon` | `HttpOnly` oturum çerezi (veya uyumlu istemcide Bearer doğrulaması) ile görüşme: `{tip:'baslat', gorevId?, mod}` → `{tip:'metin'…}`, ses ikili çerçeve; `{tip:'metin'}`, `{tip:'ses', mime}`+binary, `{tip:'bitir'}` |
 
 ### Beden (`:20130`, `Authorization: Bearer <beden.token>`)
 
@@ -611,14 +618,14 @@ Yanıt biçimi: `{ "tamam": true, "sonuc": … }` ya da `{ "tamam": false, "hata
 
 ```bash
 git clone https://github.com/AppleCurse/asistanim-cebimde && cd asistanim-cebimde
-npm install
-npm test                           # 40 test: beden API + izinler, ajan döngüsü, görüntü aktarımı,
-                                   # brifing, hücresel arama, WebSocket görüşme + özet, yetki
+npm ci
+npm test                           # 81 test: beden API, ajan/Cebimon, WebSocket, SIP birimleri ve betik kontrolleri
 node scripts/dev/sahte-ortam.mjs   # sahte 9router + sahte cihaz + gerçek beyin
-                                   # → http://localhost:20131/?token=dev
+                                   # → http://localhost:20131/ (giriş anahtarı dosyasının yolu yazdırılır)
+cat "${ASISTAN_HOME:-${TMPDIR:-/tmp}/asistan-dev}/beyin.token"
 ```
 
-Sahte 9router senaryoludur: "pil" → `pil_durumu` aracı; "bak" → `bak`; telefon sayfasında görüşme + "hoşça kal" ile özet. Gerçek bir 9router'a bağlamak için: `GERCEK_LLM=1 LLM_BASE_URL=… LLM_API_KEY=… node scripts/dev/sahte-ortam.mjs`
+Sahte 9router senaryoludur: "pil" → `pil_durumu` aracı; "bak" → `bak`; telefon sayfasında görüşme + "hoşça kal" ile özet. Gerçek yerel 9router'a bağlamak için: `GERCEK_LLM=1 LLM_BASE_URL=http://127.0.0.1:20128/v1 LLM_API_KEY=… node scripts/dev/sahte-ortam.mjs`. Doğrudan uzak sağlayıcı seçiyorsan uzak `LLM_BASE_URL` ve ilgili anahtarla birlikte `ENABLE_9ROUTER=0` da ver.
 
 Sürüm çıkarmak: `package.json` sürümünü artır → commit → `gh release create vX.Y.Z --target <dal> --generate-notes` → GitHub Actions testleri koşar, `zip/tar.gz/indir-kur.sh` dosyalarını release'e ekler.
 
@@ -626,11 +633,11 @@ Sürüm çıkarmak: `package.json` sürümünü artır → commit → `gh releas
 
 ## 15. Yol haritası
 
-- ✅ **Faz 0 — İskelet (v0.1.0):** beden, beyin, 16 araç, hafıza, görev sistemi, görüşme motoru + tarayıcı yazılım telefonu, PWA panel, Termux yaşam döngüsü scriptleri, proot/9remote kurulumu, indirilebilir sürüm.
+- ✅ **Faz 0 — İskelet (v0.1.0):** beden, beyin, 17 araç, hafıza, görev sistemi, görüşme motoru + tarayıcı yazılım telefonu, PWA panel, Termux yaşam döngüsü scriptleri, proot/9remote kurulumu, indirilebilir sürüm.
 - ✅ **Hızlı ve yerel ses/ölçüm:** Piper Türkçe modeli `PIPER_MODEL` ile cihaz içinde, ağsız TTS; Groq/Cerebras arama sağlayıcıları `ARAMA_LLM_*` ile seçilebilir. Kara kutu ölçümleri `~/.asistan/log/kara-kutu.jsonl` dosyasına, günlük maliyet özeti `/api/maliyet` uç noktasına yazılır. `bash scripts/termux/kanarya-kur.sh +905...` her gece 03:00'te ses hattını sınar ve kırmızıysa SMS gönderir.
 - ⏳ **Faz 1 — Telefonda canlandırma:** Redmi Note 8 hedefi için Termux:API, arka plan servisi, bellek sınırı, Termux:Boot ve HTTPS paneli kodu mevcut; gerçek cihazda uçtan uca doğrulama bu oturumda yapılmadı (bkz. `docs/yol-haritasi.md`).
 - ⏳ **Faz 2 — Duyular:** kayıtlı kişilerle yüz tanıma, QR → aksiyon, OCR akışları, hareket/ses tetikleyicileri ("kim geldi?"), uyandırma kelimesi, gelen SMS/arama özetini söyleme.
-- 🔄 **Faz 3 — VoIP köprüsü (gerçek arama):** Baresip SIP (Zadarma) adaptörü, ALSA dosya köprüsü, duvar saatine kilitli PCM besleyicisi, yankı kapısı ve adaptif VAD, çift yönlü ses akışı (Edge-TTS Emel + Groq Whisper), ctrl_tcp arama kontrolü entegre edildi. Ses güvenilirliği katmanı: besleyici kendi kendine iyileştirme, `⚠️ SES KANALI ÖLÜ` gözcüsü, **arama kapısı** (ses testi yeşil olmadan çaldırmaz) ve `scripts/termux/ses-testi.sh` teşhisi. Panelde 📳 VoIP'tan arama + 🗑 kayıt silme.
+- 🔄 **Faz 3 — VoIP köprüsü (kodlandı; gerçek çağrı doğrulaması bekliyor):** Baresip SIP (Zadarma) adaptörü, ALSA dosya köprüsü, duvar saatine kilitli PCM besleyicisi, yankı kapısı ve adaptif VAD, çift yönlü ses akışı, ctrl_tcp arama kontrolü entegre edildi. Ses güvenilirliği katmanı: besleyici kendi kendine iyileştirme, `⚠️ SES KANALI ÖLÜ` gözcüsü, **arama kapısı** (ses testi yeşil olmadan çaldırmaz) ve `scripts/termux/ses-testi.sh` teşhisi. Gerçek SIP hesabı/karşı tarafla canlı gidiş-dönüş çağrı kanıtı henüz yok.
 - ⏳ **Faz 4 — Yaşam:** zamanlayıcılar ("yarın 9'da ara"), tekrarlı görevler, sabah özeti, hafıza konsolidasyonu, push bildirimleri, aile profilleri, isteğe bağlı yerel küçük model.
 
 Madde madde: [docs/yol-haritasi.md](docs/yol-haritasi.md)
@@ -639,21 +646,21 @@ Madde madde: [docs/yol-haritasi.md](docs/yol-haritasi.md)
 
 ## 16. Sık sorulan sorular
 
-**Para ödemem gerekiyor mu?** Hayır. Termux, Termux:API, 9router, bu proje ücretsiz; 9router'daki ücretsiz LLM katmanlarıyla başlanır. Kaliteli model istersen kendi API anahtarın (kullandığın kadar). Gerçek telefon araması (Faz 3) dakika ücreti ister.
+**Para ödemem gerekiyor mu?** Termux ve proje ücretsizdir; 9router'da ücretsiz katman bulunabilir, sağlayıcı koşulları değişir. Ücretli model/SIP hizmeti seçersen sağlayıcının tarifesi geçerlidir. SIP/RTP araması kodu mevcut olsa da gerçek çağrı sahada doğrulanmadı.
 
 **Verilerim nereye gidiyor?** Fotoğraf, ses, transkript, hafıza — hepsi eski telefonda (`~/.asistan`). Yalnızca LLM/STT/TTS istekleri seçtiğin sağlayıcıya gider (görüntü ve ses dahil). Mahremiyet için sağlayıcıyı ona göre seç.
 
-**Cebimdeki telefonda uygulama olarak çalışıyor mu?** Evet, PWA: "⬇ Kur" ile ana ekrana iner, tam ekran açılır. Mağazadan yüklenen bir APK değildir.
+**Cebimdeki telefona uygulama olarak kurulabilir mi?** PWA manifesti ve servis çalışanı kodu vardır; kurulum tarayıcı desteğine bağlıdır ve hedef cihaz/tarayıcı kombinasyonlarında ayrıca doğrulanmalıdır. Mağazadan yüklenen bir APK değildir.
 
-**Bakkalı arayıp konuşur mu?** Evet — SIP hattı (ör. Zadarma) tanımlıysa asistan **kendi sesiyle** VoIP'tan arar (paneldeki **📳 VoIP'tan ara**). Hat yoksa tarayıcıdan prova yapar veya hattan çevirir, konuşmayı sen yaparsın. Neden ve nasıl: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
+**Bakkalı arayıp konuşur mu?** SIP/baresip dış arama ve ses köprüsü kodlanmıştır, ancak gerçek SIP hesabı ve karşı tarafla canlı çift yönlü çağrı henüz doğrulanmadı. Bu yüzden sahada çalıştığına dair söz veremem. Otomatik testler için arama kapısı ve SIP protokol/ses testleri vardır; bkz. [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
 
 **Root gerekiyor mu?** Hayır. Her şey Termux + Termux:API ile, root'suz.
 
-**Başka bir telefonda çalışır mı?** Evet, arm64 Android 7+ ve Termux çalışan her cihazda. Daha çok RAM daha rahat.
+**Başka bir telefonda çalışır mı?** Kod Termux/Termux:API ve uygun Node sürümünü hedefler; cihaz/Android sürümüne göre izin ve API farkları olabilir. Fiziksel uyumluluk doğrulaması yapılmalı.
 
-**Redmi Note 8 yeterli mi?** Evet: MIUI + 9router + beden + beyin ≈ 2.5 GB; 9remote'u gerektiğinde aç. Şarjda ısıya dikkat (§10).
+**Redmi Note 8 yeterli mi?** Tasarım hedefi Redmi Note 8'dir; gerçek RAM/ısı ölçümü ve 24 saatlik saha testi henüz yok. 9router ve 9remote bellek/ısı yükünü artırabilir.
 
-**Eski telefonu ekranı kapalı, kilitli bırakabilir miyim?** Ekran kapalı evet (wake-lock CPU'yu uyanık tutar). Kilitli: bazı MIUI sürümleri kamerayı vermez; kilit ekranını kapatıp parlaklığı kısmak en sağlamı.
+**Eski telefonu ekranı kapalı, kilitli bırakabilir miyim?** Wake-lock/supervisor kodu var ancak MIUI ekran kilidi, kamera erişimi ve uzun süreli davranış cihazda doğrulanmadı; bazı ROM'lar kilitliyken kamerayı kapatabilir.
 
 **9remote şart mı?** Hayır. Panel ve sshd yönetim için yeter. 9remote, telefonun içinde IDE/terminal/masaüstü istersen.
 

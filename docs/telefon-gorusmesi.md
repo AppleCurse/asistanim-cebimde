@@ -1,6 +1,6 @@
 # Telefon görüşmesi: asistan insanları nasıl arayacak?
 
-Hedef: "Ahmet'i ara, yarınki toplantıyı 16:00'a ertele; olmazsa Perşembe öner" dediğinde asistanın **gerçekten arayıp, dinleyip, konuşup, sonucu raporlaması**.
+Hedef: "Ahmet'i ara, yarınki toplantıyı 16:00'a ertele; olmazsa Perşembe öner" dediğinde asistanın **gerçekten arayıp, dinleyip, konuşup, sonucu raporlaması**. Bu sayfa kodlanmış akışları anlatır; mevcut durumdaki saha doğrulama sınırları [Gerçek durum](durum.md) sayfasındadır.
 
 ## Dürüst durum tespiti: hücresel hat üzerinden konuşmak (root'suz) mümkün değil
 
@@ -8,11 +8,11 @@ Termux:API ile `termux-telephony-call` numarayı çevirebilir. Ama Android, root
 
 | Mod | Ne yapar | Kim konuşur | Durum |
 |---|---|---|---|
-| **tarayici** | Cebindeki telefonun tarayıcısı ↔ WebSocket ↔ görüşme motoru | Asistan | ✅ çalışıyor — geliştirme, test ve asistanla sesli sohbet |
-| **hucresel** | Eski telefon hattı çevirir; brifing panelde "kopya kâğıdı" olarak durur | **Sen** (hoparlörden) | ✅ çalışıyor — asistan hazırlar, çevirir, sonucu senden alır ve hafızaya yazar |
-| **voip** | Bulut telefon API'si / SIP: ses akışı motorun içinden geçer | Asistan | ✅ çalışıyor — baresip/SIP köprüsü (Zadarma), ses kanalı gözcüsü + arama kapısı |
+| **tarayici** | Tarayıcı ↔ WebSocket ↔ görüşme motoru | Asistan | ✅ sahte sağlayıcıyla otomatik testli; gerçek Android tarayıcı/izin akışı sahada doğrulanmadı |
+| **hucresel** | Eski telefon hattı çevirir; brifing panelde "kopya kâğıdı" olarak durur | **Sen** (hoparlörden) | ✅ kodlanmış ve mock API testli; gerçek cihaz araması doğrulanmadı |
+| **voip** | SIP/baresip: ses akışı motorun içinden geçer | Asistan | ✅ köprü, ses kanalı gözcüsü ve arama kapısı kodlanmış/testli; gerçek SIP/RTP/karşı taraf görüşmesi doğrulanmadı |
 
-## Görüşme motoru (bugün hazır olan kısım)
+## Görüşme motoru (kodlanmış ve otomatik testli kısım; saha kanıtı ayrı)
 
 `beyin/kopru/motor.mjs` taşıyıcıdan bağımsızdır:
 
@@ -64,13 +64,13 @@ Gereksinim: sağlayıcının webhook'a ulaşabileceği **genel adres**. Eski tel
 
 Türkiye numarası: Twilio/Telnyx TR numarası vermez ama dış aramada arayan numara olarak doğrulanmış kendi cep numaranı gösterebilirsin (Twilio "Verified Caller ID"). Yerli alternatifler (Netgsm, Bulutfon, Verimor) SIP trunk verir → B seçeneği.
 
-### B) SIP trunk + telefonun kendisi SIP uç noktası ✅ UYGULANDI
+### B) SIP trunk + telefonun kendisi SIP uç noktası ✅ KODLANDI (canlı doğrulama bekliyor)
 proot Ubuntu içinde `baresip`, SIP hesabı yerli operatörden (Zadarma). Ses giriş/çıkışı ALSA `file` eklentisiyle `mic.raw`/`spk.raw` FIFO'larına bağlanır (`.asoundrc`, `scripts/proot/baresip-kur.sh`); komutlar `ctrl_tcp:4444` üzerinden. Artısı: tünel yok, tamamen telefonun içinde. Ses gidiş hattı sağlığı: besleyici kendi kendine iyileştirme + kanal gözcüsü + `ses-testi.sh` (yukarıdaki bölüme bak).
 
 ### C) WhatsApp/Telegram sesli arama
 Resmî API'ler botlara sesli arama açmaz (WhatsApp Business Calling API kısıtlı/bölgesel). Şimdilik yok.
 
-**Karar:** Önce A önerilmişti; pratikte **B (baresip + Zadarma SIP) uygulandı** ve çalışıyor. A (Twilio/Telnyx) yedek seçenek olarak duruyor; motor taşıyıcıdan bağımsız olduğu için ikisi de `beyin/kopru/` altına ayrı dosya olarak eklenebilir.
+**Durum:** **B (baresip + Zadarma SIP) kodu ve otomatik birim/integration testleri vardır.** Gerçek SIP hesabı, baresip, RTP, karşı taraf ve çift yönlü ses akışıyla sahada çalıştığı henüz kanıtlanmadı. A (Twilio/Telnyx) uygulanmış bir yedek değil, olası gelecek taşıyıcıdır; motor taşıyıcıdan bağımsız olduğu için ayrı bir dosya olarak eklenebilir.
 
 ## Hukuk ve etik (Türkiye)
 

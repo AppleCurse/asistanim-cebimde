@@ -8,6 +8,7 @@ import WebSocket from 'ws';
 process.env.ASISTAN_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'asistan-test-'));
 process.env.BEDEN_MOD = 'mock';
 process.env.KULLANICI_ADI = 'Test Kullanıcı';
+process.env.ENABLE_9ROUTER = '0'; // Sahte 9router test sunucusu rastgele port kullanır.
 
 const { sahte9RouterBaslat } = await import('./yardimci/sahte-9router.mjs');
 const { bedenBaslat, cihazSec } = await import('../beden/server.mjs');
@@ -22,10 +23,18 @@ let beyin;
 let beyinUrl;
 let token;
 let cihaz;
+let testAyar;
 
 before(async () => {
   sahte = await sahte9RouterBaslat();
+  delete process.env.ARAMA_LLM_BASE_URL;
+  delete process.env.ARAMA_LLM_API_KEY;
+  delete process.env.ARAMA_LLM_MODEL;
   const ayar = ayarYukle();
+  ayar.arama.llm.baseUrl = '';
+  ayar.arama.llm.model = 'sahte-arama-model';
+  ayar.arama.llm.apiKey = 'status-secret-api-key';
+  testAyar = ayar;
   ayar.beden.izinler.telefon = true;
   cihaz = cihazSec(ayar);
   beden = bedenBaslat({ ayar, token: tokenAl('beden'), cihaz, log: sessizLog, host: '127.0.0.1', port: 0 });
@@ -68,18 +77,77 @@ test('jsonAyikla çitli ve açıklamalı JSON’u çözer', () => {
   assert.throws(() => jsonAyikla('json yok'));
 });
 
-test('token olmadan panel API 401, sayfa giriş ekranına düşer', async () => {
+test('token olmadan veya URL query ile panel API 401, sayfa giriş ekranına düşer', async () => {
   const y = await fetch(beyinUrl + '/api/durum');
   assert.equal(y.status, 401);
+  const query = await fetch(`${beyinUrl}/api/durum?token=${token}`);
+  assert.equal(query.status, 401, 'token query parametresinden kabul edilmemeli');
   const s = await fetch(beyinUrl + '/');
   assert.equal(s.status, 200);
   assert.match(await s.text(), /Giriş/);
+  const eskiOturum = await fetch(`${beyinUrl}/telefon?gorev=test&token=${token}`, {
+    headers: { Cookie: `asistan_token=${token}` },
+    redirect: 'manual',
+  });
+  assert.equal(eskiOturum.status, 303);
+  assert.equal(eskiOturum.headers.get('location'), '/telefon?gorev=test');
+  assert.doesNotMatch(eskiOturum.headers.get('location') || '', /token=/);
 });
 
-test('?token= ile giriş çerez bırakır', async () => {
-  const y = await fetch(`${beyinUrl}/?token=${token}`, { redirect: 'manual' });
-  assert.equal(y.status, 200);
-  assert.match(y.headers.get('set-cookie') || '', /asistan_token=/);
+test('giriş tokeni POST gövdesinden HttpOnly oturum çerezine alınır', async () => {
+  const eskiBaglanti = await fetch(`${beyinUrl}/?token=${token}`);
+  assert.equal(eskiBaglanti.status, 200);
+  const girisHtml = await eskiBaglanti.text();
+  assert.match(girisHtml, /Giriş/);
+  assert.doesNotMatch(girisHtml, /searchParams\.get\(['"]token['"]\)|giris\(eskiToken\)/, 'giriş sayfası URL tokenını okumamalı veya kullanmamalı');
+  assert.equal(eskiBaglanti.headers.get('set-cookie'), null, 'URL tokeni doğrudan oturum açmamalı');
+  for (const dosya of ['panel.js', 'telefon.js']) {
+    const kaynak = fs.readFileSync(new URL(`../beyin/web/${dosya}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(kaynak, /localStorage\.(?:getItem|setItem)\s*\(\s*['"]asistan_token['"]/, `${dosya} tokenı localStorage'dan okumamalı veya oraya yazmamalı`);
+  }
+
+  const hatali = await fetch(`${beyinUrl}/api/giris`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: 'yanlis' }),
+  });
+  assert.equal(hatali.status, 401);
+
+  const y = await fetch(`${beyinUrl}/api/giris`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  assert.equal(y.status, 204);
+  const cerez = y.headers.get('set-cookie') || '';
+  assert.match(cerez, /asistan_token=/);
+  assert.match(cerez, /HttpOnly/i);
+  assert.match(cerez, /SameSite=Lax/i);
+  assert.doesNotMatch(cerez, /Secure/i, 'HTTP geliştirme sunucusunda Secure işareti yok');
+
+  const cerezBasligi = { Cookie: cerez.split(';')[0] };
+  const panel = await fetch(`${beyinUrl}/api/durum`, { headers: cerezBasligi });
+  assert.equal(panel.status, 200, 'oturum çereziyle API erişimi olmalı');
+  const sayfa = await fetch(`${beyinUrl}/`, { headers: cerezBasligi });
+  assert.match(sayfa.headers.get('set-cookie') || '', /HttpOnly/i, 'eski oturum çerezi de güvenli özniteliklerle yenilenmeli');
+  assert.match(sayfa.headers.get('referrer-policy') || '', /no-referrer/i);
+});
+
+test('TLS sonlandıran proxy için COOKIE_SECURE=1 Secure çerezi zorlar', async () => {
+  const onceki = process.env.COOKIE_SECURE;
+  process.env.COOKIE_SECURE = '1';
+  try {
+    const y = await fetch(`${beyinUrl}/api/giris`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    assert.equal(y.status, 204);
+    assert.match(y.headers.get('set-cookie') || '', /Secure/i);
+  } finally {
+    if (onceki === undefined) delete process.env.COOKIE_SECURE;
+    else process.env.COOKIE_SECURE = onceki;
+  }
 });
 
 test('/api/durum bedeni ve modeli raporlar', async () => {
@@ -88,6 +156,27 @@ test('/api/durum bedeni ve modeli raporlar', async () => {
   assert.equal(veri.beden.durum, 'yasiyor');
   assert.equal(veri.beden.mod, 'mock');
   assert.equal(veri.kullanici, 'Test Kullanıcı');
+});
+
+test('/api/durum provider anahtarını, URL parolasını veya query sırrını sızdırmaz', async () => {
+  const oncekiUrl = beyin.llm.baseUrl;
+  const oncekiBedenUrl = beyin.beden.url;
+  beyin.llm.baseUrl = 'https://durum-user:durum-pass@provider.example/v1?token=durum-query-secret';
+  beyin.beden.url = 'http://body-user:body-pass@127.0.0.1:1/v1?token=body-query-secret';
+  try {
+    const { durum, veri } = await api('/durum');
+    assert.equal(durum, 200);
+    assert.equal(veri.llm.baseUrl, 'https://provider.example/v1');
+    assert.equal(veri.arama.llm.baseUrl, sahte.url);
+    assert.equal(veri.arama.llm.model, 'sahte-arama-model');
+    assert.equal(veri.arama.llm.apiKeyConfigured, true);
+    assert.equal(veri.beden.hata, 'beden sağlık kontrolü başarısız');
+    const govde = JSON.stringify(veri);
+    assert.doesNotMatch(govde, /status-secret-api-key|durum-user|durum-pass|durum-query-secret|body-user|body-pass|body-query-secret/);
+  } finally {
+    beyin.llm.baseUrl = oncekiUrl;
+    beyin.beden.url = oncekiBedenUrl;
+  }
 });
 
 test('model otomatik seçilir (tercihen sonnet)', async () => {
@@ -254,8 +343,8 @@ test('görev: hücresel arama bedeni çevirir ve brifing döner', async () => {
 
 test('telefon köprüsü: WebSocket üzerinden tam görüşme ve özet', async () => {
   const { veri: g } = await api('/gorevler', { talimat: 'Ahmet’i ara, toplantıyı ertele' });
-  const wsUrl = beyinUrl.replace('http', 'ws') + `/ws/telefon?token=${token}`;
-  const ws = new WebSocket(wsUrl);
+  const wsUrl = beyinUrl.replace('http', 'ws') + '/ws/telefon';
+  const ws = new WebSocket(wsUrl, { headers: { Cookie: `asistan_token=${token}` } });
   const gelen = [];
   const bekle = (tip, zamanAsimi = 5000) =>
     new Promise((coz, reddet) => {
@@ -312,7 +401,7 @@ test('telefon köprüsü: WebSocket üzerinden tam görüşme ve özet', async (
 });
 
 test('telefon köprüsü: sunucu sesi modunda ses gelir ve STT çalışır', async () => {
-  const ws = new WebSocket(beyinUrl.replace('http', 'ws') + `/ws/telefon?token=${token}`);
+  const ws = new WebSocket(beyinUrl.replace('http', 'ws') + '/ws/telefon', { headers: { Cookie: `asistan_token=${token}` } });
   const metinler = [];
   let ikiliSayisi = 0;
   const bekleyenler = new Set();
@@ -358,8 +447,8 @@ test('telefon köprüsü: sunucu sesi modunda ses gelir ve STT çalışır', asy
   }
 });
 
-test('telefon köprüsü: yetkisiz WebSocket reddedilir', async () => {
-  const ws = new WebSocket(beyinUrl.replace('http', 'ws') + '/ws/telefon');
+test('telefon köprüsü: URL query tokenı WebSocket yetkilendirmez', async () => {
+  const ws = new WebSocket(beyinUrl.replace('http', 'ws') + `/ws/telefon?token=${token}`);
   const hata = await new Promise((r) => {
     ws.once('error', r);
     ws.once('unexpected-response', (_req, res) => r(new Error(String(res.statusCode))));

@@ -469,7 +469,7 @@ export class SipKoprusu {
     const hedefNumara = this.formatlaNumara(numara || gorev?.kisi?.numara);
     if (!hedefNumara) throw new Error('Geçersiz telefon numarası');
 
-    this.log.bilgi(`VoIP dış arama başlatılıyor: ${hedefNumara} (Görev #${gorev?.id || 'serbest'})`);
+    this.log.bilgi(`VoIP dış arama başlatılıyor (Görev #${gorev?.id || 'serbest'}; numara günlüğe yazılmadı)`);
 
     const asistanAdi = this.ayar?.kullanici?.asistanAdi || 'Aspasia';
     const sahip = this.ayar?.kullanici?.ad ? `${this.ayar.kullanici.ad}'ın asistanı` : 'asistanınız';
@@ -478,7 +478,7 @@ export class SipKoprusu {
     // Açılış konuşmasını arama çevrilmeden ÖNCE seslendirip PCM'e dönüştür (sıfır gecikme)
     this._acilisPcm = null;
     if (this.llm && typeof this.llm.seslendir === 'function') {
-      this.log.bilgi(`Açılış konuşması önceden hazırlanıyor: "${acilis.slice(0, 60)}..."`);
+      this.log.bilgi('Açılış konuşması önceden hazırlanıyor (metin günlüğe yazılmadı).');
       try {
         const buf = await this.llm.seslendir(acilis);
         this._acilisPcm = await pcmyeDonustur(buf);
@@ -498,8 +498,8 @@ export class SipKoprusu {
     };
 
     const tasiyici = {
-      metin: (rol, metin, sesGelecek) => {
-        this.log.bilgi(`[${rol}]: ${metin}`);
+      metin: (rol) => {
+        this.log.bilgi(`Görüşme metni alındı/gönderildi (rol: ${rol}; içerik günlüğe yazılmadı).`);
       },
       sesCal: async (buffer) => {
         try {
@@ -534,7 +534,7 @@ export class SipKoprusu {
         this.calanSesKonumu = 0;
       },
       durum: (d) => {
-        this.log.bilgi(`Arama durumu: ${JSON.stringify(d)}`);
+        this.log.bilgi(`Arama durumu: ${String(d?.asama || 'bilinmiyor')}${d?.sebep ? ` (${d.sebep})` : ''}`);
       },
       bitti: (g, ek) => {
         this.log.bilgi(`Arama tamamlandı: ${ek.sebep} (süre: ${ek.sure}s)`);
@@ -572,8 +572,8 @@ export class SipKoprusu {
 
     // Baresip olaylarını dinle (Yalnızca çağrı açılınca söze başla)
     const ayristirici = new NetstringAyristirici((msg) => {
-      this.log.bilgi(`[Baresip Olay] ${JSON.stringify(msg)}`);
-      const tip = msg.type || msg.event;
+      const tip = msg.type || msg.event || 'bilinmiyor';
+      this.log.bilgi(`[Baresip Olay] ${tip} (ayrıntılar gizli)`);
       if (tip === 'CALL_ESTABLISHED' || tip === 'CALL_ANSWERED') {
         gorusmeyiBaslat(`SIP ${tip}`);
       } else if (tip === 'CALL_CLOSED') {
@@ -583,7 +583,7 @@ export class SipKoprusu {
     });
 
     soket.on('data', (d) => {
-      this.log.bilgi(`[Baresip Ham Çıktı] (${d.length} bayt): ${d.toString('utf8').trim()}`);
+      this.log.bilgi(`[Baresip Ham Çıktı] ${d.length} bayt alındı (içerik gizli).`);
       ayristirici.besle(d);
     });
     soket.on('close', () => this._temizle());
@@ -592,7 +592,7 @@ export class SipKoprusu {
     const dialParam = hedefNumara.includes('@')
       ? (hedefNumara.startsWith('sip:') ? hedefNumara : `sip:${hedefNumara}`)
       : `sip:${hedefNumara}@${this.sipServer}`;
-    this.log.bilgi(`Baresip arama komutu gönderiliyor: dial ${dialParam}`);
+    this.log.bilgi('Baresip arama komutu gönderiliyor (hedef numara günlüğe yazılmadı).');
     komutGonder({ command: 'dial', params: dialParam });
     // Dürüst rapor: "çevrildi" ≠ "duyuldu". Ses kanalı gözcüsü sonucu ayrıca loglar.
     return {

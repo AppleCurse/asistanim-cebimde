@@ -1,5 +1,7 @@
 # Yol haritası
 
+> Otomatik test ve saha doğrulamasının güncel, tekil özeti: [Gerçek durum](durum.md). Kodda bulunan özellik ile gerçek telefonda kanıtlanmış davranış ayrı değerlendirilir.
+
 ## Faz 0 — İskelet ✅ (v0.1.0)
 - [x] Ortak ayar/tokens/log (`~/.asistan`)
 - [x] Beden: Termux:API HTTP köprüsü, izin modeli, sahte cihaz
@@ -9,7 +11,7 @@
 - [x] Web paneli (sohbet, göz, söylet, görevler, hafıza) + giriş
 - [x] Termux scriptleri: kur, baslat/durdur/durum, servis döngüsü, Termux:Boot, TLS
 - [x] proot Ubuntu + 9remote kurulumu
-- [x] 22 test (sahte 9router ile uçtan uca)
+- [x] 81 otomatik test (sahte sağlayıcı/cihaz, SIP birimleri ve durum betikleri; bkz. [Gerçek durum](durum.md))
 - [x] İndirilebilir sürüm: GitHub release (zip/tar.gz) + tek satır `indir-kur.sh` + `scripts/dev/paketle.sh`
 
 ## Faz 1 — Telefonda canlandırma
@@ -29,8 +31,8 @@
 - [ ] Uyandırma kelimesi (yerel, hafif) → `dinle` → yanıt; hoparlör modunda ev asistanı
 - [ ] Sesli bildirim: gelen SMS/arama kayıtlarını özetleyip söyleme
 
-## Faz 3 — VoIP köprüsü (gerçek arama) 🔄
-- [x] **SIP trunk + baresip (proot) — UYGULANDI:** Zadarma hesabı, ALSA dosya köprüsü (`mic.raw`/`spk.raw` FIFO), duvar saatine kilitli PCM besleyici, adaptif VAD + yankı kapısı + barge-in, ctrl_tcp arama kontrolü
+## Faz 3 — VoIP köprüsü 🔄 (kod mevcut; gerçek çağrı doğrulaması bekliyor)
+- [x] **SIP trunk + baresip (proot) — KODLANDI:** SIP ayarı, ALSA dosya köprüsü (`mic.raw`/`spk.raw` FIFO), PCM besleyici, adaptif VAD + yankı kapısı + barge-in ve ctrl_tcp arama kontrolü; gerçek SIP/RTP çağrısı doğrulanmadı
 - [x] Ses kanalı gözcüsü (`⚠️ SES KANALI ÖLÜ`), besleyici kendi kendine iyileştirme, arama kapısı (ses testi yeşil olmadan çaldırmaz) + `scripts/termux/ses-testi.sh` teşhisi
 - [x] Arama akışı: panelden onay → VoIP dış arama → görüşme → özet → hafıza (görev kartı: 📳 VoIP'tan ara)
 - [ ] Sesli mesaj/robot menü tespiti (IVR): DTMF gönderme aracı
@@ -42,7 +44,7 @@
 - [ ] Günlük özet (aramalar, SMS, pil, olaylar) sabah bildirimi
 - [ ] Bellek konsolidasyonu: `hafiza.md`'yi LLM ile periyodik sadeleştirme
 - [ ] Çoklu kullanıcı/aile profili ve kişi bazlı üslup
-- [x] Panel PWA manifest + servis çalışanı (ana ekrana kurulum)
+- [x] Panel PWA manifest + servis çalışanı (kurulum platform/tarayıcı desteğine bağlı; saha doğrulaması bekliyor)
 - [ ] Push bildirimleri (`web-push`)
 - [ ] Yerel küçük model (llama.cpp, arm64) ile çevrimdışı asgari yanıt (isteğe bağlı)
 

@@ -35,4 +35,4 @@
 - `termux-sms-send` MIUI'de ilk kullanımda "varsayılan SMS uygulaması olmadan gönderim" uyarısı verebilir; izin ver.
 
 ## Yedek/alternatif cihazlar
-Aynı kurulum her arm64 Android'de çalışır. Daha fazla RAM (6–8 GB) 9remote + 9router + görüntü işlemede rahatlık sağlar; kamera kalitesi göz için ikincil, mikrofon kalitesi kulak için birincil.
+Kurulum Termux/arm64 Android'i hedefler; her arm64 cihazda çalıştığı doğrulanmış değildir. Daha fazla RAM (6–8 GB) 9remote + 9router + görüntü işlemede yardımcı olabilir; gerçek bellek/ısı ölçümleri cihazda yapılmalıdır.

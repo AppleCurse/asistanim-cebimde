@@ -8,6 +8,11 @@ export HOME="${TERMUX_HOME:-/data/data/com.termux/files/home}"
 export PATH="/data/data/com.termux/files/usr/bin:$PREFIX/bin:$PATH"
 unset LD_PRELOAD
 
+REPO_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/../.." && pwd)"
+if [[ -f "$REPO_DIR/.env" ]]; then
+  set -a; # shellcheck disable=SC1091
+  source "$REPO_DIR/.env"; set +a
+fi
 export ASISTAN_HOME="${ASISTAN_HOME:-$HOME/.asistan}"
 RUN="$ASISTAN_HOME/run"
 LISTE=("$@")

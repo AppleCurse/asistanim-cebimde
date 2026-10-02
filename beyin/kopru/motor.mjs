@@ -126,7 +126,7 @@ Kullanıcı vedalaşırsa kısa bir veda yaz ve en sona ${BITIS_ETIKETI} ekle.`;
       return;
     }
     if (!metin || halusinasyonMu(metin)) {
-      this.log?.uyari(`STT halüsinasyonu filtrelendi: "${String(metin).slice(0, 80)}"`);
+      this.log?.uyari(`STT halüsinasyonu filtrelendi (metin içeriği günlüğe yazılmadı; uzunluk: ${String(metin).length}).`);
       this._durumVer('bekliyor', { mesaj: 'Anlaşılır bir şey duyulmadı' });
       return;
     }

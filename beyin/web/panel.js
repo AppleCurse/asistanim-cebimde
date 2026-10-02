@@ -4,15 +4,11 @@ const $ = (s) => document.querySelector(s);
 // LLM/kullanıcı metnini innerHTML'e gömerken HTML kaçışı (XSS sertleştirmesi)
 const kacir = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Eski sürümde localStorage'a yazılmış tokenı temizle; yeni oturum HttpOnly çerezle yönetilir.
+try { localStorage.removeItem('asistan_token'); } catch {}
+
 // /bak ile çekilen son görsel: bir sonraki sohbet mesajına eklenir ("bu ne?" diye sorabilmek için)
 let bekleyenGorsel = null;
-
-// URL'den veya localStorage'dan token al ve sakla
-const urlToken = new URLSearchParams(window.location.search).get('token');
-if (urlToken) {
-  try { localStorage.setItem('asistan_token', urlToken); } catch {}
-}
-const aktifToken = urlToken || (() => { try { return localStorage.getItem('asistan_token'); } catch { return null; } })() || '';
 
 let bildirimZamanlayici;
 function bildir(metin, hata = false) {
@@ -26,17 +22,12 @@ function bildir(metin, hata = false) {
 }
 
 async function api(yol, govde) {
-  const ayirici = yol.includes('?') ? '&' : '?';
-  const url = aktifToken ? `/api${yol}${ayirici}token=${encodeURIComponent(aktifToken)}` : `/api${yol}`;
-  const basliklar = {
-    ...(govde ? { 'Content-Type': 'application/json' } : {}),
-    ...(aktifToken ? { 'Authorization': `Bearer ${aktifToken}` } : {}),
-  };
   let y;
   try {
-    y = await fetch(url, {
+    y = await fetch(`/api${yol}`, {
       method: govde ? 'POST' : 'GET',
-      headers: basliklar,
+      credentials: 'same-origin',
+      headers: govde ? { 'Content-Type': 'application/json' } : {},
       body: govde ? JSON.stringify(govde) : undefined,
     });
   } catch (agHatasi) {
@@ -48,17 +39,6 @@ async function api(yol, govde) {
   }
   return veri;
 }
-
-// Sayfa içi linklere token ekle
-document.addEventListener('DOMContentLoaded', () => {
-  if (aktifToken) {
-    document.querySelectorAll('a[href^="/telefon"]').forEach((a) => {
-      if (!a.href.includes('token=')) {
-        a.href += (a.href.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(aktifToken);
-      }
-    });
-  }
-});
 
 function balon(sinif, metin, resim) {
   const d = document.createElement('div');
