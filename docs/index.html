@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cebimon — Eski Telefonunu Asistana Dönüştür</title>
+  <meta name="description" content="Çekmecedeki eski Android telefonu 7/24 çalışan kişisel asistana dönüştür. Kamera, mikrofon, SMS, telefon, hafıza — hepsi senin cihazında." />
+  <meta property="og:title" content="Cebimon" />
+  <meta property="og:description" content="Eski telefonunu kişisel asistana dönüştür. Ücretsiz, açık kaynak." />
+  <meta property="og:url" content="https://cebimon.com.tr" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg2: #111118;
+      --bg3: #1a1a25;
+      --card: #14141e;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.12);
+      --purple: #7c3aed;
+      --purple2: #a855f7;
+      --pink: #ec4899;
+      --cyan: #06b6d4;
+      --green: #10b981;
+      --text: #f1f0ff;
+      --text2: #a89fc8;
+      --text3: #5f5a7a;
+      --glow: 0 0 60px rgba(124,58,237,0.25);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── ARKAPLAN GRADIENT ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(124,58,237,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(6,182,212,0.12) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(10,10,15,0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--purple2), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text2);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      padding: 0.5rem 1.2rem;
+      background: var(--purple);
+      color: #fff !important;
+      border-radius: 8px;
+      font-size: 0.875rem !important;
+      transition: background 0.2s, transform 0.15s !important;
+    }
+
+    .nav-cta:hover { background: var(--purple2) !important; transform: translateY(-1px); }
+
+    /* ─── HERO ─── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 7rem 2rem 5rem;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 1rem;
+      background: rgba(124,58,237,0.15);
+      border: 1px solid rgba(124,58,237,0.3);
+      border-radius: 99px;
+      font-size: 0.8rem;
+      color: var(--purple2);
+      font-weight: 500;
+      margin-bottom: 2rem;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .badge-dot {
+      width: 6px; height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.3); }
+    }
+
+    h1 {
+      font-size: clamp(2.5rem, 7vw, 4.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    h1 .gradient {
+      background: linear-gradient(135deg, var(--purple2) 0%, var(--pink) 50%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--text2);
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.875rem 2rem;
+      background: linear-gradient(135deg, var(--purple), var(--purple2));
+      color: #fff;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1rem;
+      box-shadow: 0 0 30px rgba(124,58,237,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 50px rgba(124,58,237,0.6); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.875rem 2rem;
+      background: transparent;
+      color: var(--text);
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1rem;
+      border: 1px solid var(--border2);
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--purple2);
+      background: rgba(124,58,237,0.08);
+      transform: translateY(-2px);
+    }
+
+    /* ─── INSTALL BLOCK ─── */
+    .install-block {
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+      margin: 0 auto 6rem;
+      padding: 0 2rem;
+      animation: fadeUp 0.6s 0.4s ease both;
+    }
+
+    .install-label {
+      font-size: 0.8rem;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.75rem;
+      font-weight: 500;
+    }
+
+    .install-cmd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--cyan);
+      box-shadow: 0 0 40px rgba(6,182,212,0.08);
+    }
+
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text3);
+      border-radius: 6px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+      white-space: nowrap;
+    }
+
+    .copy-btn:hover { border-color: var(--purple2); color: var(--purple2); }
+    .copy-btn.copied { border-color: var(--green); color: var(--green); }
+
+    /* ─── FEATURES ─── */
+    .section {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 4rem 2rem;
+    }
+
+    .section-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--purple2);
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 700;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .section-sub {
+      color: var(--text2);
+      max-width: 500px;
+      line-height: 1.7;
+      margin-bottom: 3rem;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(124,58,237,0.4);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 40px rgba(124,58,237,0.12);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-card p {
+      color: var(--text2);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    /* ─── HOW IT WORKS ─── */
+    .steps {
+      display: grid;
+      gap: 1rem;
+      max-width: 680px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.25rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      transition: border-color 0.2s;
+    }
+
+    .step:hover { border-color: var(--border2); }
+
+    .step-num {
+      min-width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--purple), var(--purple2));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.875rem;
+    }
+
+    .step h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .step p {
+      color: var(--text2);
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+
+    .step code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--cyan);
+      background: rgba(6,182,212,0.1);
+      padding: 0.1em 0.4em;
+      border-radius: 4px;
+    }
+
+    /* ─── ARAÇLAR / DEMO ─── */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .tool-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .tool-item:hover { border-color: var(--border2); background: var(--bg3); }
+
+    .tool-icon { font-size: 1.1rem; }
+
+    /* ─── SECURITY ─── */
+    .security-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+
+    .sec-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1.25rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .sec-check {
+      font-size: 1.2rem;
+      min-width: 24px;
+      margin-top: 0.1rem;
+    }
+
+    .sec-item h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .sec-item p {
+      font-size: 0.8rem;
+      color: var(--text2);
+      line-height: 1.5;
+    }
+
+    /* ─── CTA BOTTOM ─── */
+    .cta-section {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 6rem 2rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .cta-section h2 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+    }
+
+    .cta-section p {
+      color: var(--text2);
+      margin-bottom: 2.5rem;
+      font-size: 1.05rem;
+      line-height: 1.7;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 2rem;
+      color: var(--text3);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+
+    footer a { color: var(--purple2); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ─── ANİMASYONLAR ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 640px) {
+      nav { padding: 0.875rem 1.25rem; }
+      .nav-links { display: none; }
+      .hero { padding: 5rem 1.25rem 3rem; }
+      .install-block { padding: 0 1.25rem; }
+      .install-cmd { font-size: 0.78rem; flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="logo">⚡ Cebimon</span>
+  <ul class="nav-links">
+    <li><a href="#nasil">Nasıl Çalışır</a></li>
+    <li><a href="#neler">Neler Yapabilir</a></li>
+    <li><a href="#guvenlik">Güvenlik</a></li>
+    <li><a href="https://github.com/AppleCurse/asistanim-cebimde" target="_blank" rel="noopener" class="nav-cta">GitHub →</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="badge">
+    <span class="badge-dot"></span>
+    Açık Kaynak · Ücretsiz · Root Yok
+  </div>
+
+  <h1>
+    Çekmecedeki telefonu<br/>
+    <span class="gradient">kişisel asistana</span><br/>
+    dönüştür
+  </h1>
+
+  <p class="hero-sub">
+    Eski Android telefonun 7/24 açık, kamera gören, mikrofon dinleyen, telefon eden, SMS atan, hatırlayan bir asistan olsun. Tüm veriler kendi cihazında kalır.
+  </p>
+
+  <div class="hero-actions">
+    <a href="#nasil" class="btn-primary">🚀 Hemen Başla</a>
+    <a href="https://github.com/AppleCurse/asistanim-cebimde" target="_blank" rel="noopener" class="btn-secondary">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.746 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      GitHub
+    </a>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<div class="install-block">
+  <p class="install-label">Termux'ta tek komutla kur</p>
+  <div class="install-cmd">
+    <span>curl -fsSL https://github.com/AppleCurse/asistanim-cebimde/releases/latest/download/indir-kur.sh | bash -s -- --tls</span>
+    <button class="copy-btn" id="copyBtn" onclick="kopya()">Kopyala</button>
+  </div>
+</div>
+
+<!-- NASIL ÇALIŞIR -->
+<section class="section reveal" id="nasil">
+  <p class="section-label">Nasıl Çalışır</p>
+  <h2 class="section-title">30 dakikada kurulum, ömür boyu asistan</h2>
+  <p class="section-sub">Herhangi bir aylık ücret, abonelik veya bulut hesabı gerekmez. Eski telefonun server olur.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div>
+        <h3>F-Droid'den Termux'u kur</h3>
+        <p>Eski Android telefona F-Droid üzerinden <strong>Termux</strong> ve <strong>Termux:API</strong>'yi yükle. Play Store versiyonunu alma — bakımsız.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div>
+        <h3>Tek komut çalıştır</h3>
+        <p>Termux'u aç, yukarıdaki komutu yapıştır. Paketleri kurar, token üretir, paneli hazırlar. ~30 dakika.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div>
+        <h3>Ücretsiz LLM bağla</h3>
+        <p><code>http://localhost:20128</code> adresine gir, <strong>OpenCode Free</strong> veya <strong>Kiro</strong> ile bağlan — kayıt yok, para yok.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div>
+        <h3>Cebindeki telefondan aç</h3>
+        <p><code>bash scripts/termux/baslat.sh</code> çalıştır. Panel adresi ekrana yazdırılır — o linki aç, asistanla konuş.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NELER YAPABİLİR -->
+<section class="section reveal" id="neler">
+  <p class="section-label">Yetenekler</p>
+  <h2 class="section-title">17 araç, doğal dil yeter</h2>
+  <p class="section-sub">"Etrafa bak, kim var?" — asistan aracı kendisi seçer, çalıştırır, yorumlar.</p>
+
+  <div class="tools-grid">
+    <div class="tool-item"><span class="tool-icon">📷</span> Kamerayla bak, tanı</div>
+    <div class="tool-item"><span class="tool-icon">📱</span> QR / barkod oku</div>
+    <div class="tool-item"><span class="tool-icon">🎙️</span> Ortamı dinle, yazıya çevir</div>
+    <div class="tool-item"><span class="tool-icon">🔊</span> Hoparlörden konuş</div>
+    <div class="tool-item"><span class="tool-icon">🔋</span> Pil, şarj, sıcaklık</div>
+    <div class="tool-item"><span class="tool-icon">👤</span> Rehberde kişi bul</div>
+    <div class="tool-item"><span class="tool-icon">💬</span> SMS gönder ve oku</div>
+    <div class="tool-item"><span class="tool-icon">📞</span> Arama kayıtları</div>
+    <div class="tool-item"><span class="tool-icon">📍</span> Yaklaşık konum</div>
+    <div class="tool-item"><span class="tool-icon">🔔</span> Bildirim gönder</div>
+    <div class="tool-item"><span class="tool-icon">🧠</span> Kalıcı hafıza</div>
+    <div class="tool-item"><span class="tool-icon">☎️</span> Görüşme görevi planla</div>
+    <div class="tool-item"><span class="tool-icon">🕐</span> Tarih ve saat</div>
+    <div class="tool-item"><span class="tool-icon">📋</span> Pano okuma/yazma</div>
+    <div class="tool-item"><span class="tool-icon">💡</span> Fener aç/kapat</div>
+    <div class="tool-item"><span class="tool-icon">🗂️</span> Görev tahtası (Cebimon)</div>
+  </div>
+</section>
+
+<!-- ÖZELLİKLER -->
+<section class="section reveal">
+  <p class="section-label">Neden Cebimon</p>
+  <h2 class="section-title">Fark yaratan detaylar</h2>
+  <p class="section-sub">Sadece çalışmak değil, doğru çalışmak için tasarlandı.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">🏠</span>
+      <h3>Verin senin cihazında</h3>
+      <p>Fotoğraf, ses, transkript, hafıza — hepsi eski telefonda. Yalnızca LLM istekleri seçtiğin sağlayıcıya gider.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">💸</span>
+      <h3>Ücretsiz başla</h3>
+      <p>OpenCode Free veya Kiro ile kayıt olmadan, para ödemeden başlanabilir. 9router 40+ sağlayıcıyı destekler.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔁</span>
+      <h3>7/24 çalışır</h3>
+      <p>Supervisor + Termux:Boot ile her servis çökse yeniden doğar, telefon açılışında otomatik kalkar.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🎙️</span>
+      <h3>Sesli sohbet</h3>
+      <p>Panelin Telefon sayfasından cebindekiyle asistanla sesli konuş. Tarayıcı motoru — ücretsiz, hızlı.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📞</span>
+      <h3>Telefon görevi planla</h3>
+      <p>Asistan senin adına dişçiyi, lokantayı, müşteriyi arar. Brifing panelde, sen onaylarsın.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🌐</span>
+      <h3>Her yerden eriş</h3>
+      <p>Aynı Wi-Fi'de direkt; dışarıdan Tailscale veya Cloudflare tüneliyle — port açma, DDNS yok.</p>
+    </div>
+  </div>
+</section>
+
+<!-- GÜVENLİK -->
+<section class="section reveal" id="guvenlik">
+  <p class="section-label">Güvenlik Modeli</p>
+  <h2 class="section-title">Paranoyak tasarlandı</h2>
+  <p class="section-sub">Token, şifreleme, izin kapıları — hiçbirini düşünmek zorunda değilsin.</p>
+
+  <div class="security-grid">
+    <div class="sec-item">
+      <span class="sec-check">🔑</span>
+      <div>
+        <h4>Token koruması</h4>
+        <p>Panel yalnızca POST gövdesinden doğrular. URL veya localStorage'a token koymaz.</p>
+      </div>
+    </div>
+    <div class="sec-item">
+      <span class="sec-check">🔒</span>
+      <div>
+        <h4>HTTPS zorunlu</h4>
+        <p>Mikrofon erişimi için tarayıcı güvenli bağlam ister. Kurulum sertifika üretir.</p>
+      </div>
+    </div>
+    <div class="sec-item">
+      <span class="sec-check">🛡️</span>
+      <div>
+        <h4>İzin kapıları</h4>
+        <p>Telefon, SMS, konum, kişiler varsayılan kapalı. Bilinçli açılır; OS izni tek başına yetmez.</p>
+      </div>
+    </div>
+    <div class="sec-item">
+      <span class="sec-check">🚫</span>
+      <div>
+        <h4>Kabuk erişimi yok</h4>
+        <p>LLM'e hiçbir zaman shell komutu çalıştırma yetkisi verilmez.</p>
+      </div>
+    </div>
+    <div class="sec-item">
+      <span class="sec-check">🤝</span>
+      <div>
+        <h4>İnsan onaylı aramalar</h4>
+        <p>Her görüşme görevi panelde senden onay bekler. LLM telefonu doğrudan çeviremez.</p>
+      </div>
+    </div>
+    <div class="sec-item">
+      <span class="sec-check">📡</span>
+      <div>
+        <h4>Port açma yok</h4>
+        <p>Tailscale P2P veya Cloudflare tüneli — router ayarı, DDNS, sabit IP gerekmez.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section reveal">
+  <h2>Telefonun çekmecede uyumasın</h2>
+  <p>Kurulum 30 dakika, faydası ömür boyu. Root yok, abonelik yok, hesap yok.</p>
+  <div class="hero-actions">
+    <a href="https://github.com/AppleCurse/asistanim-cebimde" target="_blank" rel="noopener" class="btn-primary">
+      GitHub'da Başla →
+    </a>
+    <a href="https://github.com/AppleCurse/asistanim-cebimde/blob/main/docs/kurulum.md" target="_blank" rel="noopener" class="btn-secondary">
+      📚 Kurulum Kılavuzu
+    </a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    <strong>Cebimon</strong> — Açık kaynak, MIT lisanslı &nbsp;·&nbsp;
+    <a href="https://github.com/AppleCurse/asistanim-cebimde" target="_blank" rel="noopener">GitHub</a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/AppleCurse/asistanim-cebimde/blob/main/docs/durum.md" target="_blank" rel="noopener">Gerçek Durum</a>
+  </p>
+  <p style="margin-top:0.5rem; color: #3d3755; font-size:0.78rem;">
+    v0.1.0 · Prototip · Gerçek Android / 7/24 saha testi devam ediyor
+  </p>
+</footer>
+
+<script>
+  // Kopyala butonu
+  function kopya() {
+    const cmd = "curl -fsSL https://github.com/AppleCurse/asistanim-cebimde/releases/latest/download/indir-kur.sh | bash -s -- --tls";
+    navigator.clipboard.writeText(cmd).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Kopyalandı ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Kopyala'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  // Scroll reveal
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
