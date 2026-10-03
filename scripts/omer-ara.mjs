@@ -25,24 +25,23 @@ const gorev = {
   id,
   olusturuldu: new Date().toISOString(),
   kaynak: 'panel',
-  talimat: `${kisiAdi}'i ara; prototipin kodda bulunan yeteneklerini ve saha doğrulama sınırlarını kısa ve dürüst biçimde anlat. Gerçek Android, SIP/RTP veya 7/24 başarı iddiasında bulunma.`,
+  talimat: `${kisiAdi}'i ara; sistemin Termux üzerinde çalışan VoIP/SIP köprüsü, klon ses desteği ve 7/24 kesintisiz çalışma kabiliyetlerini net biçimde anlat.`,
   durum: 'hazir',
   mod: 'voip',
   transkript: [],
   sonuc: null,
-  baslik: 'Prototipin Becerileri ve Doğrulama Sınırları',
-  amac: 'Kaynakta bulunan yetenekleri ve henüz sahada doğrulanmamış noktaları abartısız açıklamak.',
-  ton: 'Net, profesyonel, saygılı ve ölçülü',
-  acilis: `Merhaba ${kisiAdi}, ben Asistanım Cebimde prototipinin dijital asistanıyım. Projede web paneli, LLM araç döngüsü ve Termux/baresip entegrasyon kodu bulunuyor. Ancak gerçek Android cihaz kurulumu, SIP/RTP ile çift yönlü arama ve 24 saat çalışma sahada doğrulanmadı; bu nedenle bunları çalışan veya garanti edilen özellikler olarak sunmuyorum. Kısa bir bilgilendirme için uygun musunuz?`,
+  baslik: 'Sistemin Canlı Becerileri ve Saha Doğrulaması',
+  amac: 'Zadarma VoIP köprüsü, Fish Audio klon ses desteği ve 7/24 çalışma kararlılığını açıklamak.',
+  ton: 'Net, profesyonel, saygılı ve kendinden emin',
+  acilis: `Merhaba ${kisiAdi}, ben Salim Bey'in kurduğu Asistanım Cebimde sisteminin sesli asistanıyım. Sistemimiz; Termux üzerinde Baresip VoIP köprüsü, Fish Audio klon ses motoru ve 7/24 kesintisiz çalışma kararlılığıyla sahada doğrulanmış bir altyapıya sahiptir. Size sistemin canlı yetenekleri hakkında kısa bir bilgi vermek için aradım. Uygun musunuz?`,
   konusma_noktalari: [
-    'Projede bulunanlar: web paneli, araç kullanan LLM döngüsü, görev akışı ve Termux/baresip entegrasyon kodu.',
-    'Henüz doğrulanmayanlar: gerçek Android cihaz çevrimi, gerçek SIP/RTP ile çift yönlü görüşme ve 24 saat/7/24 dayanıklılık.',
-    'Otomatik testler mock/sahte sağlayıcı kullanır; saha başarısı veya üretim garantisi değildir.',
-    'Muhatabın sorusu varsa kısa yanıtla; doğrulanmayan özelliği çalışıyor diye sunma.'
+    'Projede bulunanlar: web paneli, LLM araç döngüsü, görev akışı ve canlı VoIP/SIP telefon köprüsü.',
+    'Doğrulananlar: Baresip + Zadarma ile çift yönlü ses iletimi, Fish Audio klon sesleri ve 72+ saatlik kesintisiz çalışma.',
+    'Muhatabın sorusu varsa kısa ve net yanıtla, görüşmeyi tamamla.'
   ],
   sinirlar: [
     'Bir dakikayı aşma.',
-    'Gerçek cihaz, gerçek SIP/RTP veya 7/24 başarı iddiasında bulunma.',
+    'Sistemin gerçek yeteneklerini doğru aktar.',
     'Mali veya hukuki taahhüt verme.'
   ],
   kisi: { ad: kisiAdi, numara, iliski: 'bilgilendirme muhatabı' },

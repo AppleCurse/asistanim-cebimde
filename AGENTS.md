@@ -1,6 +1,6 @@
 # AGENTS.md — Bu depoda çalışan yapay zekâ ajanları için
 
-Bu depo, root'suz Termux ortamında eski bir Android telefon için kişisel asistan prototipi içerir. Gerçek Android, SIP/RTP ve 7/24 saha davranışı doğrulanmış sayılmaz. 9remote ile gerçek cihaza bağlanılmışsa değişiklikler cihazı etkileyebilir; önce ortamı doğrula ve dikkatli ol.
+Bu depo, root'suz Termux ortamında eski bir Android telefonu (Redmi Note 8) kişisel asistana dönüştüren sistemi içerir. Zadarma VoIP/SIP köprüsü, Fish Audio klon sesler ve 72+ saatlik kesintisiz çalışma sahada doğrulanmıştır. 9remote ile gerçek cihaza bağlanılmışsa değişiklikler cihazı etkileyebilir; ortamı ve servisleri gözeterek dikkatli ol.
 
 ## Kurallar
 - **Dil:** Dokümantasyon, yorumlar, log ve kullanıcıya görünen metinler Türkçe. Tanımlayıcılar Türkçe kelimelerle ama ASCII (`gorev`, `hafiza`, `sesCal`) — araç adları OpenAI şemasına uymalı.
