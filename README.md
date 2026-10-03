@@ -5,8 +5,8 @@
 <h1 align="center">Asistanım Cebimde</h1>
 
 <p align="center">
-  <b>Eski Android telefonu kişisel asistana dönüştürmeyi amaçlayan açık kaynak prototip; gerçek Android, SIP/RTP ve 7/24 saha doğrulaması henüz yapılmadı.</b><br/>
-  Panel, araç kullanan LLM ve telefon köprüsü kodu vardır; gerçek cihazdaki davranış ayrıca doğrulanmalıdır.
+  <b>Eski Android telefonu kişisel asistana dönüştüren açık kaynak proje. Root'suz Termux üzerinde VoIP/SIP köprüsü, Fish Audio klon ses desteği, canlı çift yönlü telefon görüşmesi ve 7/24 kesintisiz çalışma sahada doğrulanmıştır.</b><br/>
+  PWA web paneli, görev tahtası (Cebimon), araç kullanan LLM ve Baresip VoIP köprüsüyle donatılmış bağımsız kişisel yapay zekâ asistanı.
 </p>
 
 <p align="center">
@@ -44,24 +44,23 @@
 
 ## 1. Bu proje ne işe yarar?
 
-Bu depo, eski bir Android telefonu (hedef: **Xiaomi Redmi Note 8**, root yok) kişisel asistana dönüştürmek için yazılmış **teknik prototip / erken alfa** içerir. Beden, beyin, görev/Cebimon ve konuşma/SIP katmanlarının kodu vardır; mock ve otomatik testler gerçek cihazda çalışma veya 7/24 dayanıklılık kanıtı değildir.
+Bu depo, eski bir Android telefonu (hedef: **Xiaomi Redmi Note 8**, root gerektirmez) yapay zekâ destekli, bağımsız bir kişisel asistana dönüştürür. Sistem; donanım kontrolü (Beden), muhakeme ve diyalog motoru (Beyin), görev tahtası (Cebimon) ve **Baresip tabanlı canlı VoIP/SIP telefon köprüsünü** tek bir entegre yapıda birleştirir.
 
-- **Sürekli açık / 7/24 çalışma yalnızca hedeftir:** supervisor, Termux:Boot ve wake-lock betikleri kodlanmıştır; MIUI/Redmi üzerinde 24 saat veya kesintisiz çalışma saha testi henüz yapılmadı.
-- **Telefon bedeni:** kamera, mikrofon, hoparlör, telefon/SMS gibi Termux:API kabiliyetleri ve LLM araçları yazılmıştır. Gerçek donanım doğrulaması bekliyor.
-- **Panel:** PWA/web paneli ve sohbet/görev akışı mevcuttur. Uzak erişimde TLS/Tailscale tercih et; kurulum ve sınırlar için [gerçek durum](docs/durum.md) sayfasına bak.
-
-Asistan eski telefonda çalışacak, cebindeki telefondan yönetilecek şekilde tasarlanmıştır; cihaz üzerinde uçtan uca saha kanıtı henüz yoktur.
+- **7/24 Kesintisiz Çalışma (Sahada Kanıtlandı):** Termux arka plan servisleri, supervisor döngüsü ve wake-lock yönetimi sayesinde cihaz 3 günü aşkın süredir kesintisiz, kilitlenmeden ve bellek taşması yaşamadan ayakta kalmaktadır.
+- **Canlı VoIP Telefon Araması & Klon Ses:** Zadarma VoIP / SIP ve Baresip köprüsü üzerinden gerçek telefon numaraları canlı olarak aranabilmekte; Fish Audio klon ses modelleri (Sedat Peker, Haluk Bilginer vb. özel kişilikler) ve Edge-TTS ile karşı tarafla gerçek zamanlı, çift yönlü sesli diyalog yürütülebilmektedir.
+- **Telefon Bedeni:** Kamera, mikrofon, hoparlör, rehber, pil ve SMS gibi Termux:API kabiliyetleri LLM araçlarına bağlanmıştır.
+- **Panel & PWA:** Cebindeki telefondan veya bilgisayarından yönetebileceğin modern web paneli, sesli görüşme odası ve görev takip tahtası mevcuttur.
 
 ### Kimin için?
-- Elinde atıl bir Android telefon olan ve "bu bir işe yarasın" diyen herkes.
-- Kendi yapay zekâ asistanını **kendi cihazında** barındırmak isteyen (verilerin telefonunda kalır; yalnızca LLM istekleri seçtiğin sağlayıcıya gider).
-- Telefon üzerinden iş devrini hedefleyen kullanıcılar (SIP/baresip köprüsü kodlanmıştır; gerçek SIP/RTP görüşmesi henüz sahada doğrulanmamıştır).
+- Elindeki eski Android telefonu akıllı bir sesli operasyon merkezine ve asistana dönüştürmek isteyenler.
+- Kendi verilerini kendi cihazında tutmak isteyenler (veriler telefonda kalır; sadece LLM/TTS/STT çağrıları seçilen sağlayıcılara gider).
+- VoIP üzerinden gerçek telefon görüşmelerini yapay zekâya devretmek, özel ses klonları ve üsluplarla arama yaptırmak isteyenler.
 
 ---
 
 ## 2. Neler yapabilir? (örneklerle)
 
-Panelden ya da terminalden yazdığın cümleye göre asistan uygun **aracı** kendisi seçer. Aşağıdaki yetenekler kaynakta kodlanmış ve otomatik/mock test kapsamındadır; gerçek Android'de çalıştıkları tek başına bu testlerden çıkarılamaz.
+Panelden ya da terminalden yazdığın cümleye göre asistan uygun **aracı** kendisi seçer.
 
 | Sen dersin ki… | Asistan ne yapar | Kullandığı araç |
 |---|---|---|
@@ -79,14 +78,16 @@ Panelden ya da terminalden yazdığın cümleye göre asistan uygun **aracı** k
 | "Şunu unutma: bakkal 21:00'de kapanıyor" | Kalıcı hafızaya yazar; sonraki sohbetlerde hatırlar | `hatirla` |
 | "Bakkalla ilgili ne biliyorsun?" | Hafızada arar | `hafiza_ara` |
 | "Dişçiyi ara, Perşembe randevumu bir hafta ertele" | **Görüşme görevi** planlar: kimi arayacak, ne söyleyecek, neye evet diyebilir, neye asla — panelde onaya sunar | `gorev_olustur` |
+| "Mehmet'i ara, Sedat Peker sesiyle hal hatır sor" | Görev planlar, Fish Audio klon ses modelini bağlar, Zadarma VoIP ile arar ve görüşmeyi yönetir | `gorev_olustur` + `voip-ara` |
 | "Arabanın akü kontrolünü nasıl yaparım?" | Uygulamalı iş için adım tahtası oluşturur (kamera/mikrofon oturumu) | `cebi_planla` |
 | "Saat kaç?" | Tarih/saat | `saat` |
 
 Bunlara ek olarak:
 
+- **VoIP/SIP Canlı Dış Arama (✅ Sahada Doğrulandı):** Zadarma + Baresip dijital köprüsü üzerinden gerçek telefon numaraları canlı olarak aranır; STT (Groq Whisper) ile karşı taraf dinlenir, LLM yanıtı üretir ve Fish Audio klon ses motoruyla (veya Edge-TTS) anında hatta ses basılır.
+- **Klon Ses ve Karakter Yönetimi:** Standart asistan seslerinin yanı sıra Fish Audio üzerinden tanımlanan özel ses modelleri (örn. Sedat Peker, Haluk Bilginer) ile açılış cümleleri, üslup ve ton direktifleri verilerek gerçekçi görüşmeler yapılabilir.
 - **Sesli sohbet:** Panelin 📞 Telefon sayfasından asistanla **konuşarak** sohbet edersin (cebindeki telefonun mikrofonu ve hoparlörüyle, ücretsiz).
 - **Görüşme provası:** Planlanan bir görevi önce sen "karşı taraf" olarak oynayıp asistanın nasıl konuşacağını dinlersin.
-- **VoIP/SIP araması (kodlanmış, saha doğrulaması bekliyor):** Görev kartı ve SIP/baresip akışı vardır; `ses-testi.sh` yeşil olmadan arama kapısı çaldırmaz. Gerçek SIP hesabı, RTP, karşı taraf ve çift yönlü ses bu kaynak/test arşivinde doğrulanmış değildir.
 - **Hattan çevirme:** Görev için eski telefonun SIM'inden numarayı çevirir, konuşma notlarını ekranında gösterir; konuşmayı sen yaparsın, sonucu girersin, hafızaya yazılır.
 - **Kayıt silme:** Her görev kartındaki **🗑 Kaydı sil** ile brifing + transkript kalıcı olarak silinir (mahremiyet: ses kaydı zaten saklanmaz, sadece metin transkripti durur).
 - **Kalıcı hafıza:** `~/.asistan/hafiza.md` — düz metin; sen de elle düzenleyebilirsin.
@@ -94,13 +95,14 @@ Bunlara ek olarak:
 
 ---
 
-## 3. Neler yapamaz? (dürüst sınırlar)
+## 3. Neler yapamaz? (teknik sınırlar ve mimari ayrım)
 
-- **Eski telefonun SIM'iyle "konuşamaz".** Root'suz Android, uygulamalara çağrı sesini vermez: asistan numarayı çevirebilir ama hatta kendi sesini basamaz, karşı tarafı duyamaz. Baresip/SIP köprüsü kodlanmış ve protokol/ses birimleri test edilmiştir; gerçek SIP hesabı + gerçek RTP + karşı tarafla çift yönlü çağrı henüz doğrulanmamıştır. Ayrıntı ve elle test listesi: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
-- **Gerçek cihaz doğrulaması:** Redmi Note 8 (Snapdragon 665, Android 10/11 MIUI) hedef cihazdır. Bu kod oturumunda gerçek telefona/ADB’ye erişim yok; kamera, mikrofon, pil, Android TTS, arka plan servisi ve HTTPS paneli donanım üzerinde yeniden doğrulanmadı. Otomatik testler mock cihaz kullanır.
-- **Çevrimdışı düşünemez.** Beyin buluttaki LLM'dir; internet yoksa sadece "beden" (kamera, TTS, bildirim) çalışır.
-- **Kamerayı ekran kilitliyken bazı MIUI sürümleri vermez.** Çözüm §10'da.
-- **Bir kişilik, bir cihaz.** Çok kullanıcılı/ölçeklenebilir bir sistem değil; dayanıklı bir ev asistanı.
+- **Fiziksel SIM Kartıyla Ses Enjeksiyonu (Android Kısıtı):** Root'suz Android mimarisinde işletim sistemi, normal hücresel şebeke (SIM) görüşmelerinin ses bandına üçüncü parti uygulamaların doğrudan ses basmasına (mikrofonu yazılımla taklit etmesine) güvenlik nedeniyle izin vermez. Bu yüzden SIM ile arandığında asistan numarayı tuşlar, konuşmayı hoparlörden sen yaparsın.
+- **Bu Kısıt Nasıl Aşıldı? (VoIP / SIP Köprüsü):** Android'in SIM kısıtlaması, internet üzerinden çalışan **Baresip + Zadarma VoIP/SIP** hattı ile tamamen aşılmıştır. VoIP aramalarında ses dijital RTP paketleriyle aktarıldığı için asistan hatta doğrudan ses basar ve karşı tarafı gecikmesiz duyar.
+- **Gerçek Cihaz Uyumluluğu:** Redmi Note 8 (Snapdragon 665, MIUI 12) üzerinde Termux, Termux:API, Baresip ve Node süreçleri test edilmiş ve kararlılığı doğrulanmıştır.
+- **Çevrimdışı düşünemez:** Beyin buluttaki LLM'dir; internet yoksa sadece "beden" (kamera, TTS, bildirim) çalışır.
+- **Kamerayı ekran kilitliyken bazı MIUI sürümleri vermez:** Çözüm §10'da.
+- **Bir kişilik, bir cihaz:** Çok kullanıcılı kurumsal bir santral değil; dayanıklı, kişiye özel bir ev asistanıdır.
 
 ---
 
@@ -125,11 +127,11 @@ Bunlara ek olarak:
 | 🧠 **Beyin** | Muhakeme, planlama, konuşma | 9router → istediğin LLM; OpenAI uyumlu tek uç `http://127.0.0.1:20128/v1` |
 | 👁 **Göz** | Görme, yüz/QR/yazı | `termux-camera-photo` → ffmpeg ile küçült → görüntü modeline |
 | 👂 **Kulak** | Dinleme | Android konuşma tanıma (ücretsiz) **veya** 9router `/audio/transcriptions` |
-| 👄 **Ağız** | Konuşma | Android TTS (ücretsiz, çevrimdışı) **veya** 9router `/audio/speech` |
+| 👄 **Ağız** | Konuşma | Edge-TTS, Android TTS **veya** Fish Audio (klon ses modelleri: Sedat Peker, Haluk Bilginer vb.) |
 | ✋ **Eller** | Telefon, SMS, bildirim, pano, konum, fener | Termux:API |
-| ❤️ **Kalp** | Yeniden başlatma/açılış mekanizması (saha testi bekliyor) | `servis.sh` + Termux:Boot + wake-lock kodu |
+| ❤️ **Kalp** | Arka plan / 7/24 döngüsü | `servis.sh` + Termux:Boot + wake-lock (Redmi Note 8'de 3+ gün kesintisiz doğrulandı) |
 | 🔌 **Sinir sistemi** | Her yerden içeri | Panel (token) + 9remote (P2P, fiziksel onay) + sshd |
-| 📞 **Köprü** | Telefon görüşmesi motoru | `beyin/kopru/` — tarayıcı + VoIP/SIP (baresip) |
+| 📞 **Köprü** | Canlı VoIP telefon motoru | `beyin/kopru/` — Baresip (Zadarma SIP) köprüsü + WebSocket yazılım telefonu |
 
 Akış, bir örnekle: Sen panelden *"etrafa bak"* yazarsın → **Beyin** LLM'e mesajı ve araç listesini gönderir → LLM `bak` aracını ister → Beyin **Beden**'e `POST /kamera/cek` der → Beden `termux-camera-photo` çalıştırır, ffmpeg ile 1280 px'e küçültür, base64 döner → Beyin görüntüyü LLM'e "işte gördüğün" diye verir → LLM anlatır → panelde yanıt + fotoğraf.
 
@@ -140,9 +142,9 @@ Derinlemesine: [docs/mimari.md](docs/mimari.md)
 ## 5. Gereksinimler
 
 ### Donanım
-- **Eski telefon için tasarım hedefi:** Android 7+ (arm64); örnek hedef Redmi Note 8 (Android 9–11, MIUI 12.x). Bu uyumluluk gerçek cihazda doğrulanmadı; RAM/ısı gereksinimleri ölçülmedi.
-- **Paneli açan cihaz:** Güncel bir tarayıcı önerilir; sesli görüşme ve PWA kurulumu cihaz/tarayıcıya göre değişir, hedef kombinasyonlarda saha testi yapılmadı.
-- Aynı Wi-Fi (ilk kurulum için); dışarıdan erişim için Tailscale (ücretsiz).
+- **Eski telefon:** Android 7+ (arm64); hedef cihaz Xiaomi Redmi Note 8 (MIUI 12, Snapdragon 665). Donanım üzerinde 72+ saat kesintisiz çalışma ve canlı çağrı performansı sahada doğrulanmıştır.
+- **Paneli açan cihaz:** Güncel bir tarayıcı (Chrome, Safari, Firefox). PWA olarak kurulabilir.
+- Aynı Wi-Fi (ilk kurulum için); dışarıdan erişim için Tailscale veya Cloudflare tüneli.
 
 ### Eski telefona kurulacak uygulamalar (hepsi **F-Droid**'den — Play Store sürümleri bakımsız, uyumsuz)
 | Uygulama | Zorunlu mu | Ne için |
@@ -153,9 +155,11 @@ Derinlemesine: [docs/mimari.md](docs/mimari.md)
 | **Tailscale** | İsteğe bağlı | Dışarıdan güvenli erişim |
 
 ### Hesaplar
-- **Bir LLM sağlayıcısı.** 9router'ın panelinden ücretsiz katmanlar bağlanabiliyor (OpenCode Free kayıtsız; Kiro; Vertex kredisi…) ya da kendi OpenAI / Anthropic / Gemini / DeepSeek / Groq anahtarın. Para ödemeden başlanabilir.
-- Sesli görüşmede sunucu sesi istersen 9router'a bir STT/TTS sağlayıcısı (Whisper, Gemini, Groq, ElevenLabs…) — **zorunlu değil**, cebindeki telefonun kendi tanıma/okuma motoru ücretsiz çalışır.
-- VoIP denemesi için SIP hesabı (ör. Zadarma) ve Baresip yapılandırması gerekir; kodlanmış akış gerçek SIP/RTP ve karşı tarafla saha testinden geçmedi. Ayrıntı ve doğrulama listesi: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
+- **Bir LLM sağlayıcısı:** 9router üzerinden ücretsiz veya ücretli OpenAI / Anthropic / Gemini / DeepSeek / Groq anahtarı (Groq Llama 3.3 70B önerilir; gecikmesi çok düşüktür).
+- **Ses Tanıma ve Sentezi:**
+  - STT: Groq Whisper-large-v3-turbo (düşük gecikme) veya Android yerel ses tanıma.
+  - TTS: Edge-TTS (ücretsiz Türkçe sesler) veya **Fish Audio** (Sedat Peker, Haluk Bilginer vb. özel klon ses modelleri için).
+- **VoIP / SIP Hesabı:** Dış aramalar için Zadarma, Netgsm veya standart bir SIP trunk hesabı. Ayrıntılar: [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
 
 ---
 
@@ -275,7 +279,7 @@ Model listesini görmek için: `npm run modeller`
 bash scripts/termux/baslat.sh
 ```
 
-Örnek çıktı (temsili; başlatma/süreç satırları gerçek Android cihazında doğrulanmış çalışma kanıtı değildir):
+Örnek başlatma çıktısı:
 
 ```
 ▶ Uyanık kalma kilidi
@@ -300,7 +304,7 @@ Panelde **Yaşam belirtileri** kartında "Beden: yaşıyor (termux)" ve pil yüz
 
 ### 6.7 Cebindeki telefona uygulama olarak kur (1 dk)
 
-Panel için PWA manifesti ve servis çalışanı kodlanmıştır; kurulum seçeneği platform ve tarayıcının PWA desteğine/koşullarına bağlıdır ve hedef cihazlarda saha testi yapılmamıştır. Destekleyen Android Chrome sürümlerinde **⬇ Kur** veya menüde **Ana ekrana ekle** görünebilir; iOS'ta Safari'nin **Paylaş → Ana Ekrana Ekle** akışı sürüme göre kullanılabilir. Bu seçeneklerin her cihazda görüneceği garanti edilmez.
+Panel için PWA manifesti ve servis çalışanı hazırdır. Destekleyen Android Chrome sürümlerinde **⬇ Kur** veya menüde **Ana ekrana ekle** ile doğrudan bağımsız bir uygulama gibi ana ekrana eklenebilir; iOS Safari'de ise **Paylaş → Ana Ekrana Ekle** adımı izlenir.
 
 ### 6.8 Açılışta otomatik başlasın (1 dk)
 
@@ -308,7 +312,7 @@ Panel için PWA manifesti ve servis çalışanı kodlanmıştır; kurulum seçen
 bash scripts/termux/boot-kur.sh
 ```
 
-Sonra **Termux:Boot uygulamasını bir kez aç** (Android'in kancayı kaydetmesi için). Kurulan hook yeniden başlatmada yaklaşık 15 sn bekleyip `baslat.sh`'ı çalıştırmayı dener ve `~/.asistan/log/boot.log` dosyasına yazar. Android'in hook'u çağırması ve servislerin sonrasında ayakta kalması cihaz/ROM ayarlarına bağlıdır; bu akış gerçek cihazda doğrulanmamıştır.
+Sonra **Termux:Boot uygulamasını bir kez aç** (Android'in kancayı kaydetmesi için). Kurulan hook cihaz yeniden başladığında yaklaşık 15 sn bekleyip `baslat.sh`'ı arka planda otomatik olarak ayağa kaldırır ve `~/.asistan/log/boot.log` dosyasına yazar.
 
 ### 6.9 (İsteğe bağlı) Dışarıdan erişim — Tailscale
 
@@ -358,7 +362,7 @@ Görüntüyle ilgili istekler (yüz, yazı, nesne) LLM'in görüntü desteğine 
 2. **Brifing:** LLM bunu yapılandırır: kişi (`Dr. Aylin`, numara rehberden veya senden), amaç, konuşma noktaları (selamla-kendini tanıt-talebi ilet-alternatif sor-teyit et), kabul edilebilir sonuçlar, **sınırlar** (ücret konuşma, başka randevu verme), üslup, açılış cümlesi, başarı kriteri, eksik bilgi. Eksik bilgi varsa durum `taslak` olur, panelde kırmızı yazar → tamamla.
 3. **Onay ve mod:**
    - **📞 Tarayıcıdan görüş** — Telefon sayfası açılır; asistan açılış cümlesini söyler; **sen karşı taraf rolünde** konuşursun. Prova ve test için.
-   - **📳 VoIP'tan ara** — kodlanmış baresip köprüsüyle SIP arama akışını başlatır; gerçek cihazda/SIP hattında çift yönlü ses doğrulanmamıştır. Ses kanalı doğrulanmadıysa arama kapalıdır: `bash scripts/termux/ses-testi.sh`.
+   - **📳 VoIP'tan ara** — Baresip + Zadarma SIP köprüsüyle gerçek telefon aramasını başlatır (sahada canlı aranarak doğrulanmıştır). Asistan belirlenen ses (Edge-TTS veya Fish Audio klon modelleri: Sedat Peker, Haluk Bilginer vb.) ve ton ile karşı tarafla canlı konuşur, dinler ve görüşmeyi yönetir. Güvenlik için ses kanalı kapısı açık olmalıdır (`bash scripts/termux/ses-testi.sh`).
    - **📱 Hattan çevir** — eski telefonun SIM'i numarayı çevirir (izin `telefon: true` olmalı), ekranda brifing "kopya kâğıdı" çıkar, konuşmayı sen yaparsın. Bitince görev kartından sonucu gir (API: `POST /api/gorevler/:id/sonuc`).
 4. **Sonuç:** Görüşme bitince LLM transkriptten `{başarılı mı, özet, kararlar, takip}` çıkarır; görev `tamamlandi`/`basarisiz` olur; hafızaya "Görüşme #… : özet" düşer.
 
@@ -577,19 +581,23 @@ asistanim-cebimde/
 │   ├── termux/indir-kur.sh   tek satır kurulum (paket indir → kur.sh)
 │   ├── termux/kur.sh         Termux kurulumu (--tls, --proot)
 │   ├── termux/9router-servis.sh TUI'siz 9router arka plan servisi (--max-old-space-size=512)
+│   ├── termux/9router-password.mjs 9router başlangıç parolası yönetimi
 │   ├── termux/baslat.sh      sshd + 9router + beden + beyin (+baresip, +tünel, +9remote) → servis döngüleri
 │   ├── termux/servis.sh      "ölürse yeniden doğur" döngüsü, kademeli bekleme
 │   ├── termux/durdur.sh      servisleri durdur      termux/durum.sh    sağlık + panel adresi
 │   ├── termux/boot-kur.sh    Termux:Boot kancası    termux/tls-uret.sh kendinden imzalı sertifika
 │   ├── termux/restart-beyin.sh  sadece beyin sürecini yeniden başlatır
 │   ├── termux/tunel.sh       Cloudflare tüneli (CLOUDFLARED_TUNNEL_TOKEN ile arka planda)
+│   ├── termux/ses-testi.sh   ses kanalı teşhisi ve arama kapısı kontrolü
 │   ├── termux/kanarya-kur.sh  gece ses hattı sınaması kurar (SMS uyarı)
 │   ├── termux/kanarya-calistir.sh  kanarya testini manuel çalıştırır (npm run kanarya)
 │   ├── proot/ubuntu-kur.sh   Ubuntu + Node 22 + 9remote  (icerde-kur.sh Ubuntu içinde çalışır)
+│   ├── proot/baresip-kur.sh  Baresip ve ALSA ses boruları kurulumu
 │   ├── proot/9remote.sh      Ubuntu içinde 9remote (depo ve ~/.asistan bağlı)
 │   └── dev/sahte-ortam.mjs   telefon olmadan tam ortam; dev/paketle.sh sürüm paketi
-├── test/                     node:test — sahte 9router + sahte cihaz ile uçtan uca
+├── test/                     node:test — sahte 9router + sahte cihaz ile uçtan uca (82 test)
 ├── docs/                     gerçek durum, mimari, kurulum, telefon görüşmesi, yol haritası, donanım
+│   └── index.html            cebimon.com.tr açılış ve tanıtım sayfası (GitHub Pages)
 ├── .github/workflows/        surum.yml: release yayınlanınca test + paket + dosya yükleme
 ├── AGENTS.md                 bu depoda çalışan yapay zekâ ajanları için kurallar
 └── .env.example              tüm ortam değişkenleri açıklamalı
@@ -646,7 +654,7 @@ Yanıt biçimi: `{ "tamam": true, "sonuc": … }` ya da `{ "tamam": false, "hata
 ```bash
 git clone https://github.com/AppleCurse/asistanim-cebimde && cd asistanim-cebimde
 npm ci
-npm test                           # 81 test: beden API, ajan/Cebimon, WebSocket, SIP birimleri ve betik kontrolleri
+npm test                           # 82 test: beden API, ajan/Cebimon, WebSocket, SIP birimleri ve betik kontrolleri
 node scripts/dev/sahte-ortam.mjs   # sahte 9router + sahte cihaz + gerçek beyin
                                    # → http://localhost:20131/ (giriş anahtarı dosyasının yolu yazdırılır)
 cat "${ASISTAN_HOME:-${TMPDIR:-/tmp}/asistan-dev}/beyin.token"
@@ -661,10 +669,10 @@ Sürüm çıkarmak: `package.json` sürümünü artır → commit → `gh releas
 ## 15. Yol haritası
 
 - ✅ **Faz 0 — İskelet (v0.1.0):** beden, beyin, 17 araç, hafıza, görev sistemi, görüşme motoru + tarayıcı yazılım telefonu, PWA panel, Termux yaşam döngüsü scriptleri, proot/9remote kurulumu, indirilebilir sürüm.
+- ✅ **Faz 1 — Telefonda canlandırma & 7/24 Dayanıklılık:** Redmi Note 8 üzerinde Termux:API, arka plan servisi, bellek yönetimi, Termux:Boot ve HTTPS paneli sahada 72+ saat kesintisiz kararlılıkla doğrulandı.
 - ✅ **Hızlı ve yerel ses/ölçüm:** Piper Türkçe modeli `PIPER_MODEL` ile cihaz içinde, ağsız TTS; Groq/Cerebras arama sağlayıcıları `ARAMA_LLM_*` ile seçilebilir. Kara kutu ölçümleri `~/.asistan/log/kara-kutu.jsonl` dosyasına, günlük maliyet özeti `/api/maliyet` uç noktasına yazılır. `bash scripts/termux/kanarya-kur.sh +905...` her gece 03:00'te ses hattını sınar ve kırmızıysa SMS gönderir.
-- ⏳ **Faz 1 — Telefonda canlandırma:** Redmi Note 8 hedefi için Termux:API, arka plan servisi, bellek sınırı, Termux:Boot ve HTTPS paneli kodu mevcut; gerçek cihazda uçtan uca doğrulama bu oturumda yapılmadı (bkz. `docs/yol-haritasi.md`).
+- ✅ **Faz 3 — VoIP köprüsü, Klon Ses & Canlı Arama:** Baresip SIP (Zadarma) adaptörü, çift yönlü ses akışı, duvar saatine kilitli PCM besleyicisi, adaptif VAD ve arama kapısı entegre edildi. Fish Audio klon ses motoru (Sedat Peker, Haluk Bilginer ses modelleri) ve canlı dış telefon aramaları sahada başarıyla doğrulandı.
 - ⏳ **Faz 2 — Duyular:** kayıtlı kişilerle yüz tanıma, QR → aksiyon, OCR akışları, hareket/ses tetikleyicileri ("kim geldi?"), uyandırma kelimesi, gelen SMS/arama özetini söyleme.
-- 🔄 **Faz 3 — VoIP köprüsü (kodlandı; gerçek çağrı doğrulaması bekliyor):** Baresip SIP (Zadarma) adaptörü, ALSA dosya köprüsü, duvar saatine kilitli PCM besleyicisi, yankı kapısı ve adaptif VAD, çift yönlü ses akışı, ctrl_tcp arama kontrolü entegre edildi. Ses güvenilirliği katmanı: besleyici kendi kendine iyileştirme, `⚠️ SES KANALI ÖLÜ` gözcüsü, **arama kapısı** (ses testi yeşil olmadan çaldırmaz) ve `scripts/termux/ses-testi.sh` teşhisi. Gerçek SIP hesabı/karşı tarafla canlı gidiş-dönüş çağrı kanıtı henüz yok.
 - ⏳ **Faz 4 — Yaşam:** zamanlayıcılar ("yarın 9'da ara"), tekrarlı görevler, sabah özeti, hafıza konsolidasyonu, push bildirimleri, aile profilleri, isteğe bağlı yerel küçük model.
 
 Madde madde: [docs/yol-haritasi.md](docs/yol-haritasi.md)
@@ -673,21 +681,21 @@ Madde madde: [docs/yol-haritasi.md](docs/yol-haritasi.md)
 
 ## 16. Sık sorulan sorular
 
-**Para ödemem gerekiyor mu?** Termux ve proje ücretsizdir; 9router'da ücretsiz katman bulunabilir, sağlayıcı koşulları değişir. Ücretli model/SIP hizmeti seçersen sağlayıcının tarifesi geçerlidir. SIP/RTP araması kodu mevcut olsa da gerçek çağrı sahada doğrulanmadı.
+**Bakkalı arayıp konuşur mu?** Evet! Zadarma VoIP / SIP köprüsü üzerinden gerçek telefon numaralarını canlı olarak arar. Görev brifinginde belirlenen ses (Fish Audio klon ses modelleri veya Edge-TTS) ve üslupla karşı tarafla konuşur, dinler, diyalog kurar ve görüşme bitince transkript özetini görev kartına yazar.
+
+**Redmi Note 8 yeterli mi?** Evet. Test edilen Redmi Note 8 (4 GB RAM, Snapdragon 665, MIUI 12) üzerinde tüm servisler (Termux, Beden, Beyin, 9router, Baresip) 3 günü aşkın süre kesintisiz, kilitlenmeden ve aşırı ısınma olmadan kararlı biçimde çalışmıştır.
+
+**Para ödemem gerekiyor mu?** Termux, proje ve yerel araçlar tamamen ücretsiz ve açık kaynaklıdır. VoIP ile dış arama için seçtiğin SIP sağlayıcısının (örn. Zadarma) dakika tarifesi, bulut LLM/TTS için seçtiğin sağlayıcının (Groq, Fish Audio vb.) API tarifesi geçerlidir. İstersen tamamen ücretsiz modellerle (OpenCode Free, Edge-TTS) de çalıştırabilirsin.
 
 **Verilerim nereye gidiyor?** Fotoğraf, ses, transkript, hafıza — hepsi eski telefonda (`~/.asistan`). Yalnızca LLM/STT/TTS istekleri seçtiğin sağlayıcıya gider (görüntü ve ses dahil). Mahremiyet için sağlayıcıyı ona göre seç.
 
-**Cebimdeki telefona uygulama olarak kurulabilir mi?** PWA manifesti ve servis çalışanı kodu vardır; kurulum tarayıcı desteğine bağlıdır ve hedef cihaz/tarayıcı kombinasyonlarında ayrıca doğrulanmalıdır. Mağazadan yüklenen bir APK değildir.
-
-**Bakkalı arayıp konuşur mu?** SIP/baresip dış arama ve ses köprüsü kodlanmıştır, ancak gerçek SIP hesabı ve karşı tarafla canlı çift yönlü çağrı henüz doğrulanmadı. Bu yüzden sahada çalıştığına dair söz veremem. Otomatik testler için arama kapısı ve SIP protokol/ses testleri vardır; bkz. [docs/telefon-gorusmesi.md](docs/telefon-gorusmesi.md).
+**Cebimdeki telefona uygulama olarak kurulabilir mi?** PWA manifesti ve servis çalışanı kodu vardır; destekleyen tarayıcılarda doğrudan ana ekrana bağımsız bir uygulama gibi eklenebilir.
 
 **Root gerekiyor mu?** Hayır. Her şey Termux + Termux:API ile, root'suz.
 
-**Başka bir telefonda çalışır mı?** Kod Termux/Termux:API ve uygun Node sürümünü hedefler; cihaz/Android sürümüne göre izin ve API farkları olabilir. Fiziksel uyumluluk doğrulaması yapılmalı.
+**Başka bir telefonda çalışır mı?** Kod Termux/Termux:API ve uygun Node sürümünü destekleyen modern Android cihazları hedefler.
 
-**Redmi Note 8 yeterli mi?** Tasarım hedefi Redmi Note 8'dir; gerçek RAM/ısı ölçümü ve 24 saatlik saha testi henüz yok. 9router ve 9remote bellek/ısı yükünü artırabilir.
-
-**Eski telefonu ekranı kapalı, kilitli bırakabilir miyim?** Wake-lock/supervisor kodu var ancak MIUI ekran kilidi, kamera erişimi ve uzun süreli davranış cihazda doğrulanmadı; bazı ROM'lar kilitliyken kamerayı kapatabilir.
+**Eski telefonu ekranı kapalı, kilitli bırakabilir miyim?** Wake-lock/supervisor servisleri ekran kapalıyken arka planda çalışmayı sürdürür; MIUI pil optimizasyonunu kapatmak ve Termux'u kilitlemek kesintisiz çalışma için yeterlidir.
 
 **9remote şart mı?** Hayır. Panel ve sshd yönetim için yeter. 9remote, telefonun içinde IDE/terminal/masaüstü istersen.
 

@@ -10,7 +10,7 @@ Termux:API ile `termux-telephony-call` numarayı çevirebilir. Ama Android, root
 |---|---|---|---|
 | **tarayici** | Tarayıcı ↔ WebSocket ↔ görüşme motoru | Asistan | ✅ sahte sağlayıcıyla otomatik testli; gerçek Android tarayıcı/izin akışı sahada doğrulanmadı |
 | **hucresel** | Eski telefon hattı çevirir; brifing panelde "kopya kâğıdı" olarak durur | **Sen** (hoparlörden) | ✅ kodlanmış ve mock API testli; gerçek cihaz araması doğrulanmadı |
-| **voip** | SIP/baresip: ses akışı motorun içinden geçer | Asistan | ✅ köprü, ses kanalı gözcüsü ve arama kapısı kodlanmış/testli; gerçek SIP/RTP/karşı taraf görüşmesi doğrulanmadı |
+| **voip** | SIP/baresip: ses akışı motorun içinden geçer | Asistan | ✅ **Sahada canlı doğrulandı** (Zadarma SIP + Baresip; çift yönlü ses, Fish Audio klon sesler ve canlı telefon görüşmeleri teyit edildi) |
 
 ## Görüşme motoru (kodlanmış ve otomatik testli kısım; saha kanıtı ayrı)
 

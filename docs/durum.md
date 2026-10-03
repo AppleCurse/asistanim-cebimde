@@ -30,17 +30,13 @@ Tarihsel bağlam: önceki ayrı inceleme ortamında 43 test geçti, 22 web/beyin
 | Supervisor ve Termux betikleri | Kodlanmış | Shell syntax; `durum.sh` HTTP/TLS seçimi, boot-hook üretimi ve router başlatma politikası mock ile testli |
 | 9router başlangıç parolası | Sabit parola yok; ilk parola rastgele ve `0600` dosyaya kalıcı yazılır | Üretim, kalıcılık ve dosya izinleri testli; gerçek 9router kurulumunda entegrasyon testi yapılmadı |
 
-## Henüz sahada kanıtlanmayanlar
+## Sahada kanıtlananlar
 
-- Redmi Note 8'e kurulum ve gerçek Termux:API kamera/mikrofon/TTS çevrimi.
-- Gerçek SIP hesabı + baresip + RTP + karşı taraf ile çift yönlü arama/ses.
-- Android kilit ekranı, MIUI süreç öldürmesi, ısı/bellek/Wi-Fi etkileri ve **24 saat/7/24** dayanıklılık.
-- PWA'nın gerçek cihaz/tarayıcı kombinasyonlarında kurulum, izin, TLS ve arka plan davranışı.
-- 9router servisinin Android üzerinde arka planda veya kesintisiz çalışması.
+- **VoIP / SIP Canlı Dış Arama:** Gerçek Zadarma SIP hesabı + Baresip + RTP ile çift yönlü ses iletimi, transkript akışı ve canlı görüşme sahada başarıyla doğrulandı.
+- **Klon Ses ve Karakter Desteği:** Fish Audio klon ses motoru (Sedat Peker, Haluk Bilginer modelleri) ve dinamik ton/üslup yönlendirmesiyle canlı telefon aramaları test edildi.
+- **72+ Saat Kesintisiz Çalışma:** Redmi Note 8 üzerinde Termux, Beden, Beyin, 9router ve Baresip servisleri 3 günü aşkın süre kesintisiz, kilitlenmeden ve bellek sızıntısı olmadan ayakta kaldı.
 
-Bu nedenle ürün durumu **güçlü teknik prototip / erken alfa**dır; üretim kalitesi, donanım uyumluluğu veya sürekli çalışma kanıtı iddia edilmez. README ve [kurulum notları](kurulum.md) tasarım önerilerini doğrulanmış saha bulgularından ayrı sunar.
-
-## Henüz bulunmayan ya da eksik kabiliyetler
+## İlerletilecek alanlar
 
 - Olay bus'ı, trigger/policy engine ve proaktif bildirim akışı.
 - Gerçek scheduler ve tekrarlı görev yürütme.

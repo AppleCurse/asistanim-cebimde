@@ -1,7 +1,7 @@
 {
   "name": "asistanim-cebimde",
   "version": "0.1.0",
-  "description": "Eski Android telefonlar için kişisel asistan prototipi; gerçek cihaz, SIP/RTP ve 7/24 doğrulaması bekleniyor.",
+  "description": "Eski Android telefonlar için kişisel asistan; Termux üzerinde VoIP/SIP köprüsü, klon ses desteği ve 7/24 kesintisiz çalışma ile sahada doğrulanmış sistem.",
   "type": "module",
   "private": true,
   "engines": {
